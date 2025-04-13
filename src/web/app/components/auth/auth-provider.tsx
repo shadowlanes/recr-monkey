@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User, Provider } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
 type AuthContextType = {
   user: User | null;
@@ -21,6 +22,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Check if user has recurring payments
+  const checkForRecurringPayments = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('recurring_payments')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1);
+        
+      if (error) {
+        console.error('Error checking recurring payments:', error);
+        return false;
+      }
+      
+      return data && data.length > 0;
+    } catch (err) {
+      console.error('Error checking recurring payments:', err);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -31,6 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (data?.user) {
           setUser(data.user);
+          
+          // Check for recurring payments and redirect if needed
+          const hasRecurringPayments = await checkForRecurringPayments(data.user.id);
+          if (hasRecurringPayments) {
+            router.push('/dashboard/calendar');
+          }
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -44,6 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (session?.user) {
           setUser(session.user);
+          
+          // On sign in or sign up, check if user has recurring payments and redirect
+          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
+            const hasRecurringPayments = await checkForRecurringPayments(session.user.id);
+            if (hasRecurringPayments) {
+              router.push('/dashboard/calendar');
+            }
+          }
         } else {
           setUser(null);
         }
@@ -56,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   const signUp = async (email: string, password: string) => {
     setError(null);
