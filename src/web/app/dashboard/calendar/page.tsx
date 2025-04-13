@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { supabase, TABLES, PAYMENT_FREQUENCIES } from '../../lib/supabase';
 import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
+
+// View mode types
+type CalendarViewMode = 'month' | 'year';
 
 export default function Calendar() {
   const { user } = useAuth();
@@ -11,26 +14,17 @@ export default function Calendar() {
   const [paymentSources, setPaymentSources] = useState<PaymentSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
   const [calendarDays, setCalendarDays] = useState<Array<{ date: Date | null, payments: PaymentDateItem[] }>>([]);
+  const [yearCalendar, setYearCalendar] = useState<Array<Array<{ date: Date | null, payments: PaymentDateItem[] }>>>([]);
   const [hoverPayment, setHoverPayment] = useState<{
     paymentItem: PaymentDateItem;
     position: { x: number; y: number };
   } | null>(null);
 
-  // Load data when component mounts
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
-  // Update calendar when current month changes or when payments/sources change
-  useEffect(() => {
-    generateCalendarDays();
-  }, [currentMonth, recurringPayments, paymentSources]);
-
-  const loadData = async () => {
+  // Load data from Supabase
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -51,19 +45,21 @@ export default function Calendar() {
         
       if (paymentsError) throw paymentsError;
       setRecurringPayments(paymentsData || []);
-    } catch (error: any) {
-      console.error('Error loading data:', error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error loading data:', errorMessage);
       setError('Failed to load data. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
-  const generateCalendarDays = () => {
+  // Generate month calendar
+  const generateMonthCalendar = useCallback(() => {
     // Get first day of the month
-    const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     // Get last day of the month
-    const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     
     // Get day of week for first day (0 = Sunday, 6 = Saturday)
     const firstDayOfWeek = firstDay.getDay();
@@ -77,7 +73,7 @@ export default function Calendar() {
     
     // Add all days of the month
     for (let i = 1; i <= lastDay.getDate(); i++) {
-      const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i);
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
       days.push({ date, payments: [] });
     }
     
@@ -110,7 +106,86 @@ export default function Calendar() {
     }
     
     setCalendarDays(days);
-  };
+  }, [currentDate, recurringPayments, paymentSources]);
+
+  // Generate year calendar
+  const generateYearCalendar = useCallback(() => {
+    const monthsCalendar: Array<Array<{ date: Date | null, payments: PaymentDateItem[] }>> = [];
+    
+    for (let month = 0; month < 12; month++) {
+      // Create a new date for each month of the current year
+      const monthDate = new Date(currentDate.getFullYear(), month, 1);
+      
+      // Get first day of the month
+      const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      // Get last day of the month
+      const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+      
+      // Get day of week for first day (0 = Sunday, 6 = Saturday)
+      const firstDayOfWeek = firstDay.getDay();
+      
+      const days: Array<{ date: Date | null, payments: PaymentDateItem[] }> = [];
+      
+      // Add empty slots for days before the first day of the month
+      for (let i = 0; i < firstDayOfWeek; i++) {
+        days.push({ date: null, payments: [] });
+      }
+      
+      // Add all days of the month
+      for (let i = 1; i <= lastDay.getDate(); i++) {
+        const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), i);
+        days.push({ date, payments: [] });
+      }
+      
+      // Calculate payments for each day
+      if (recurringPayments.length > 0) {
+        // For each day in the calendar
+        days.forEach(day => {
+          if (!day.date) return;
+          
+          // For each recurring payment
+          recurringPayments.forEach(payment => {
+            // Get all payment occurrences for this day in the month
+            const paymentDates = getAllPaymentDatesForDay(payment, day.date!);
+            
+            // Add each payment occurrence to the day
+            paymentDates.forEach(paymentDate => {
+              const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
+              
+              day.payments.push({
+                date: paymentDate,
+                payment,
+                paymentSource
+              });
+            });
+          });
+          
+          // Sort payments by amount (highest first)
+          day.payments.sort((a, b) => b.payment.amount - a.payment.amount);
+        });
+      }
+      
+      monthsCalendar.push(days);
+    }
+    
+    setYearCalendar(monthsCalendar);
+  }, [currentDate, recurringPayments, paymentSources]);
+
+  // Load data when component mounts
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user, loadData]);
+
+  // Update calendar when current date or view mode changes
+  useEffect(() => {
+    if (viewMode === 'month') {
+      generateMonthCalendar();
+    } else {
+      generateYearCalendar();
+    }
+  }, [currentDate, viewMode, recurringPayments, paymentSources, generateMonthCalendar, generateYearCalendar]);
 
   // Get all payment occurrences for a day
   const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
@@ -128,7 +203,7 @@ export default function Calendar() {
     switch (payment.frequency) {
       case PAYMENT_FREQUENCIES.WEEKLY: {
         // Find the first occurrence in or before this month
-        let currentDate = new Date(startDate);
+        const currentDate = new Date(startDate);
         while (currentDate.getFullYear() < dayDate.getFullYear() || 
                (currentDate.getFullYear() === dayDate.getFullYear() && 
                 currentDate.getMonth() < dayDate.getMonth())) {
@@ -170,7 +245,7 @@ export default function Calendar() {
       
       case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
         // Similar to weekly but with 28-day intervals
-        let currentDate = new Date(startDate);
+        const currentDate = new Date(startDate);
         while (currentDate.getFullYear() < dayDate.getFullYear() || 
                (currentDate.getFullYear() === dayDate.getFullYear() && 
                 currentDate.getMonth() < dayDate.getMonth())) {
@@ -215,14 +290,27 @@ export default function Calendar() {
     return paymentDates;
   };
 
-  // Navigate to previous month
-  const goToPreviousMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  // Navigate to previous period (month or year)
+  const goToPrevious = () => {
+    if (viewMode === 'month') {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear() - 1, 0, 1));
+    }
   };
 
-  // Navigate to next month
-  const goToNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  // Navigate to next period (month or year)
+  const goToNext = () => {
+    if (viewMode === 'month') {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    } else {
+      setCurrentDate(new Date(currentDate.getFullYear() + 1, 0, 1));
+    }
+  };
+
+  // Toggle between month and year view
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'month' ? 'year' : 'month');
   };
 
   // Handle mouse enter on payment item
@@ -270,13 +358,49 @@ export default function Calendar() {
            date.getFullYear() === today.getFullYear();
   };
 
-  // Format month and year for display
-  const formatMonthYear = (date: Date): string => {
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  // Format date for display based on view mode
+  const formatViewDate = (): string => {
+    if (viewMode === 'month') {
+      return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else {
+      return currentDate.getFullYear().toString();
+    }
   };
 
-  // Generate the calendar grid
-  const renderCalendar = () => {
+  // Get month name for year view
+  const getMonthName = (monthIndex: number): string => {
+    return new Date(currentDate.getFullYear(), monthIndex, 1).toLocaleDateString('en-US', { month: 'short' });
+  };
+
+  // Calculate monthly total based on current view
+  const calculateMonthlyTotal = (): number => {
+    if (viewMode === 'month') {
+      return calendarDays.reduce((sum, day) => 
+        sum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0);
+    } else {
+      // Make sure we have data for the current month before calculating
+      const currentMonth = currentDate.getMonth();
+      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
+        return yearCalendar[currentMonth].reduce((sum, day) => 
+          sum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0);
+      }
+      return 0;
+    }
+  };
+
+  // Calculate yearly total
+  const calculateYearlyTotal = (): number => {
+    // Make sure we have yearCalendar data before calculating
+    if (yearCalendar.length === 0) return 0;
+    
+    return yearCalendar.reduce((sum, month) => 
+      sum + month.reduce((monthSum, day) => 
+        monthSum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0), 0);
+  };
+
+  // Generate a month calendar grid
+  const renderMonthCalendar = () => {
+    // ...existing code...
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
     return (
@@ -323,38 +447,66 @@ export default function Calendar() {
             </div>
           ))}
         </div>
-        
-        {/* Payment details tooltip on hover */}
-        {hoverPayment && (
-          <div 
-            className="fixed bg-white shadow-lg rounded-md p-3 z-50 border border-gray-200 w-64"
-            style={{
-              left: `${hoverPayment.position.x + 10}px`,
-              top: `${hoverPayment.position.y + 10}px`
-            }}
-          >
-            <div className="font-bold text-lg mb-1">{hoverPayment.paymentItem.payment.name}</div>
-            <div className="mb-1">
-              <span className="font-medium">Amount:</span> {formatCurrency(hoverPayment.paymentItem.payment.amount, hoverPayment.paymentItem.payment.currency)}
+      </div>
+    );
+  };
+
+  // Generate a year calendar grid showing all months
+  const renderYearCalendar = () => {
+    // Check if yearCalendar is ready
+    if (yearCalendar.length === 0) {
+      return <div className="text-center py-8">Loading year view...</div>;
+    }
+
+    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    
+    return (
+      <div className="year-calendar-container grid grid-cols-3 md:grid-cols-4 gap-4">
+        {yearCalendar.map((month, monthIndex) => (
+          <div key={monthIndex} className="month-container">
+            <h3 className="text-center font-bold mb-2">{getMonthName(monthIndex)}</h3>
+            
+            {/* Day headers - smaller for year view */}
+            <div className="grid grid-cols-7 gap-0 mb-1">
+              {dayNames.map(day => (
+                <div 
+                  key={day} 
+                  className="text-center text-xs p-1 bg-gray-100"
+                >
+                  {day}
+                </div>
+              ))}
             </div>
-            <div className="mb-1">
-              <span className="font-medium">Frequency:</span> {formatFrequency(hoverPayment.paymentItem.payment.frequency)}
+            
+            {/* Calendar days - smaller for year view */}
+            <div className="grid grid-cols-7 gap-0">
+              {month.map((day, dayIndex) => (
+                <div 
+                  key={dayIndex} 
+                  className={`relative p-1 min-h-[24px] border border-gray-100 text-center ${!day.date ? 'opacity-30' : ''} ${day.date && isToday(day.date) ? 'bg-indigo-50' : ''}`}
+                >
+                  {day.date && (
+                    <>
+                      <div className="text-xs">{day.date.getDate()}</div>
+                      {day.payments.length > 0 && (
+                        <div 
+                          className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500"
+                          onMouseEnter={(e) => handlePaymentMouseEnter(e, day.payments[0])}
+                          onMouseLeave={handlePaymentMouseLeave}
+                        ></div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
-            <div className="mb-1">
-              <span className="font-medium">Start Date:</span> {new Date(hoverPayment.paymentItem.payment.start_date).toLocaleDateString()}
+            
+            {/* Payment count for this month */}
+            <div className="text-xs text-center mt-1">
+              {month.reduce((count, day) => count + (day.date ? day.payments.length : 0), 0)} payments
             </div>
-            <div className="mb-1">
-              <span className="font-medium">Payment Source:</span> {hoverPayment.paymentItem.paymentSource?.name || 'Unknown'}
-            </div>
-            {hoverPayment.paymentItem.paymentSource && (
-              <div>
-                <span className="font-medium">Source Type:</span> {hoverPayment.paymentItem.paymentSource.type === 'bank_account' 
-                  ? `Bank Account (${hoverPayment.paymentItem.paymentSource.identifier})` 
-                  : `Card (${hoverPayment.paymentItem.paymentSource.identifier})`}
-              </div>
-            )}
           </div>
-        )}
+        ))}
       </div>
     );
   };
@@ -363,22 +515,30 @@ export default function Calendar() {
     <div>
       <div className="section-header flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Calendar View</h2>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
           <button 
-            onClick={goToPreviousMonth} 
-            className="btn btn-small"
+            onClick={toggleViewMode}
+            className="btn btn-small bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
           >
-            &larr; Prev
+            {viewMode === 'month' ? 'Year View' : 'Month View'}
           </button>
-          <span className="text-lg font-medium">
-            {formatMonthYear(currentMonth)}
-          </span>
-          <button 
-            onClick={goToNextMonth} 
-            className="btn btn-small"
-          >
-            Next &rarr;
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={goToPrevious} 
+              className="btn btn-small"
+            >
+              &larr; {viewMode === 'month' ? 'Prev' : 'Prev Year'}
+            </button>
+            <span className="text-lg font-medium">
+              {formatViewDate()}
+            </span>
+            <button 
+              onClick={goToNext} 
+              className="btn btn-small"
+            >
+              {viewMode === 'month' ? 'Next' : 'Next Year'} &rarr;
+            </button>
+          </div>
         </div>
       </div>
 
@@ -393,7 +553,62 @@ export default function Calendar() {
           <p>No recurring payments added yet. Add payments to see them in the calendar view.</p>
         </div>
       ) : (
-        renderCalendar()
+        viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()
+      )}
+      
+      {/* Summary statistics */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-md">
+        <h3 className="font-bold mb-2">Payment Summary</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <p className="text-sm text-gray-600">Total Recurring Payments</p>
+            <p className="text-xl font-bold">{recurringPayments.length}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Monthly Total (Based on {viewMode === 'month' ? 'Current' : 'All'} View)</p>
+            <p className="text-xl font-bold">
+              {formatCurrency(calculateMonthlyTotal(), 'USD')}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Yearly Total (Estimated)</p>
+            <p className="text-xl font-bold">
+              {formatCurrency(calculateYearlyTotal(), 'USD')}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Payment details tooltip on hover */}
+      {hoverPayment && (
+        <div 
+          className="fixed bg-white shadow-lg rounded-md p-3 z-50 border border-gray-200 w-64"
+          style={{
+            left: `${hoverPayment.position.x + 10}px`,
+            top: `${hoverPayment.position.y + 10}px`
+          }}
+        >
+          <div className="font-bold text-lg mb-1">{hoverPayment.paymentItem.payment.name}</div>
+          <div className="mb-1">
+            <span className="font-medium">Amount:</span> {formatCurrency(hoverPayment.paymentItem.payment.amount, hoverPayment.paymentItem.payment.currency)}
+          </div>
+          <div className="mb-1">
+            <span className="font-medium">Frequency:</span> {formatFrequency(hoverPayment.paymentItem.payment.frequency)}
+          </div>
+          <div className="mb-1">
+            <span className="font-medium">Start Date:</span> {new Date(hoverPayment.paymentItem.payment.start_date).toLocaleDateString()}
+          </div>
+          <div className="mb-1">
+            <span className="font-medium">Payment Source:</span> {hoverPayment.paymentItem.paymentSource?.name || 'Unknown'}
+          </div>
+          {hoverPayment.paymentItem.paymentSource && (
+            <div>
+              <span className="font-medium">Source Type:</span> {hoverPayment.paymentItem.paymentSource.type === 'bank_account' 
+                ? `Bank Account (${hoverPayment.paymentItem.paymentSource.identifier})` 
+                : `Card (${hoverPayment.paymentItem.paymentSource.identifier})`}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
