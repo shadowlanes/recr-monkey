@@ -81,11 +81,13 @@ export default function Home() {
           </a>
         </div>
         <div className="md:w-1/2 md:pl-12">
-          <div className="relative w-full h-80 md:h-96">
+          <div className="relative w-full h-80 md:h-96 rounded-2xl overflow-hidden border-2 border-gray-100 shadow-lg">
             <Image 
-              src="/window.svg" 
+              src="/image-recr.png" 
               alt="Dashboard Preview" 
               fill 
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-contain"
             />
           </div>
