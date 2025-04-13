@@ -5,6 +5,7 @@ import { useAuth } from '../../components/auth/auth-provider';
 import { supabase, TABLES, PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
 import { PaymentSource } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
+import { PencilIcon, TrashIcon, PlusIcon, XMarkIcon, CreditCardIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 
 export default function PaymentSources() { 
   const { user } = useAuth();
@@ -228,18 +229,24 @@ export default function PaymentSources() {
 
   return (
     <div>
-      <div className="section-header flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Payment Sources</h2>
+      <div className="section-header flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-[#4e5c6f]">Payment Sources</h2>
         <button 
           onClick={handleAddNew} 
-          className="btn btn-primary btn-small"
+          className="btn btn-primary btn-small flex items-center gap-1"
         >
-          Add New
+          <PlusIcon className="w-5 h-5" />
+          <span>Add New</span>
         </button>
       </div>
 
       {error && !isModalOpen && (
-        <div className="error-message mb-4">{error}</div>
+        <div className="error-message mb-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          {error}
+        </div>
       )}
 
       {isLoading ? (
@@ -247,33 +254,52 @@ export default function PaymentSources() {
           <LoadingAnimation size="large" />
         </div>
       ) : paymentSources.length === 0 ? (
-        <div className="text-center py-8">
-          <p>No payment sources added yet. Click "Add New" to get started.</p>
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-100 shadow-sm">
+          <div className="w-16 h-16 mx-auto bg-[#fff0e6] rounded-full flex items-center justify-center mb-4">
+            <CreditCardIcon className="w-8 h-8 text-[#e06c00]" />
+          </div>
+          <p className="text-[#4e5c6f] mb-4">No payment sources added yet. Click "Add New" to get started.</p>
+          <button 
+            onClick={handleAddNew} 
+            className="btn btn-primary flex items-center gap-2 mx-auto"
+          >
+            <PlusIcon className="w-5 h-5" />
+            <span>Add Payment Source</span>
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {paymentSources.map(source => (
             <div key={source.id} className="card">
               <div className="card-header">
-                <h3 className="font-bold">{source.name}</h3>
+                <div className="flex items-center">
+                  {source.type === PAYMENT_SOURCE_TYPES.BANK_ACCOUNT ? (
+                    <BanknotesIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                  ) : (
+                    <CreditCardIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                  )}
+                  <h3 className="font-bold text-[#303030]">{source.name}</h3>
+                </div>
                 <div className="card-actions">
                   <button 
                     onClick={() => handleEdit(source)} 
-                    className="btn btn-small"
+                    className="icon-btn icon-btn-edit"
+                    aria-label="Edit payment source"
                   >
-                    Edit
+                    <PencilIcon className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={() => handleDelete(source)} 
-                    className="btn btn-small btn-danger"
+                    className="icon-btn icon-btn-delete"
+                    aria-label="Delete payment source"
                   >
-                    Delete
+                    <TrashIcon className="w-5 h-5" />
                   </button>
                 </div>
               </div>
               <div className="card-content">
-                <p><strong>Type:</strong> {formatSourceType(source.type)}</p>
-                <p><strong>Identifier:</strong> {getIdentifierDisplay(source)}</p>
+                <p className="mb-1.5"><span className="font-medium text-[#303030]">Type:</span> {formatSourceType(source.type)}</p>
+                <p><span className="font-medium text-[#303030]">Identifier:</span> {getIdentifierDisplay(source)}</p>
               </div>
             </div>
           ))}
@@ -282,10 +308,10 @@ export default function PaymentSources() {
 
       {/* Modal for add/edit/delete */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-md shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold">
+        <div className="modal">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="text-xl font-bold text-[#303030]">
                 {modalMode === 'add' 
                   ? 'Add Payment Source' 
                   : modalMode === 'edit' 
@@ -294,23 +320,32 @@ export default function PaymentSources() {
               </h2>
               <button 
                 onClick={handleCloseModal}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                aria-label="Close modal"
               >
-                &times;
+                <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="p-4">
+            <div className="modal-body">
               {error && (
-                <div className="error-message mb-4">{error}</div>
+                <div className="error-message mb-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {error}
+                </div>
               )}
               
               {modalMode === 'delete' ? (
                 <div>
-                  <p className="mb-4">
-                    Are you sure you want to delete the payment source "{currentSource?.name}"?
-                  </p>
-                  <div className="flex justify-end gap-2">
+                  <div className="bg-[#ffeae6] p-4 rounded-lg mb-4 flex items-center">
+                    <TrashIcon className="w-6 h-6 text-[#d95a45] mr-3" />
+                    <p className="mb-0">
+                      Are you sure you want to delete the payment source "<span className="font-semibold">{currentSource?.name}</span>"?
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
                     <button 
                       onClick={handleCloseModal}
                       className="btn btn-secondary"
@@ -319,8 +354,9 @@ export default function PaymentSources() {
                     </button>
                     <button 
                       onClick={handleDeleteConfirm}
-                      className="btn btn-danger"
+                      className="btn btn-danger flex items-center gap-1"
                     >
+                      <TrashIcon className="w-5 h-5" />
                       Delete
                     </button>
                   </div>
@@ -328,11 +364,14 @@ export default function PaymentSources() {
               ) : (
                 <form onSubmit={handleSubmit}>
                   {modalMode === 'edit' && associatedPayments.length > 0 && (
-                    <div className="bg-blue-50 p-3 rounded mb-4 border border-blue-200">
-                      <h3 className="font-medium text-blue-800 mb-2">
+                    <div className="bg-[#fff0e6] p-4 rounded-lg mb-5 border border-[#f4a261]">
+                      <h3 className="font-medium text-[#e06c00] mb-2 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         Associated Recurring Payments ({associatedPayments.length})
                       </h3>
-                      <ul className="list-disc pl-5 text-sm text-blue-700">
+                      <ul className="list-disc pl-5 text-sm text-[#4e5c6f]">
                         {associatedPayments.map(payment => (
                           <li key={payment.id}>{payment.name}</li>
                         ))}
@@ -381,12 +420,12 @@ export default function PaymentSources() {
                       placeholder="Last 4 digits"
                       required
                     />
-                    <small className="text-gray-500">
+                    <small className="text-gray-500 mt-1 block">
                       Enter the last 4 digits of your account or card number
                     </small>
                   </div>
                   
-                  <div className="flex justify-end gap-2 mt-4">
+                  <div className="flex justify-end gap-3 mt-6">
                     <button 
                       type="button"
                       onClick={handleCloseModal}
@@ -396,9 +435,19 @@ export default function PaymentSources() {
                     </button>
                     <button 
                       type="submit"
-                      className="btn btn-primary"
+                      className="btn btn-primary flex items-center gap-1"
                     >
-                      {modalMode === 'add' ? 'Add' : 'Update'}
+                      {modalMode === 'add' ? (
+                        <>
+                          <PlusIcon className="w-5 h-5" />
+                          Add
+                        </>
+                      ) : (
+                        <>
+                          <PencilIcon className="w-5 h-5" />
+                          Update
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>

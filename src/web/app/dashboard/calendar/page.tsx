@@ -13,6 +13,18 @@ import {
 } from '../../lib/supabase';
 import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CalendarDaysIcon,
+  CalendarIcon, 
+  CurrencyDollarIcon,
+  BanknotesIcon,
+  CreditCardIcon,
+  ArrowPathIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from '@heroicons/react/24/outline';
 
 // View mode types
 type CalendarViewMode = 'month' | 'year';
@@ -685,17 +697,16 @@ export default function Calendar() {
 
   // Generate a month calendar grid
   const renderMonthCalendar = () => {
-    // ...existing code...
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
     return (
       <div className="calendar-container">
         {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-1">
+        <div className="grid grid-cols-7 gap-1 mb-2">
           {dayNames.map(day => (
             <div 
               key={day} 
-              className="text-center font-bold p-2 bg-gray-100 rounded-md"
+              className="text-center font-bold p-2 bg-[#fff0e6] rounded-md text-[#4e5c6f]"
             >
               {day}
             </div>
@@ -703,15 +714,15 @@ export default function Calendar() {
         </div>
         
         {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-2">
           {calendarDays.map((day, index) => (
             <div 
               key={index} 
-              className={`calendar-day relative ${!day.date ? 'opacity-30' : ''} ${day.date && isToday(day.date) ? 'today bg-indigo-50' : ''}`}
+              className={`calendar-day relative ${!day.date ? 'opacity-30' : ''} ${day.date && isToday(day.date) ? 'today bg-[#fff0e6] border-[#e06c00]' : ''}`}
             >
               {day.date && (
                 <>
-                  <div className="calendar-day-header">
+                  <div className="calendar-day-header text-[#4e5c6f]">
                     {day.date.getDate()}
                   </div>
                   <div className="calendar-day-events overflow-y-auto max-h-24">
@@ -750,17 +761,17 @@ export default function Calendar() {
     const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     
     return (
-      <div className="year-calendar-container grid grid-cols-3 md:grid-cols-4 gap-4">
+      <div className="year-calendar-container grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {yearCalendar.map((month, monthIndex) => (
-          <div key={monthIndex} className="month-container">
-            <h3 className="text-center font-bold mb-2">{getMonthName(monthIndex)}</h3>
+          <div key={monthIndex} className="month-container bg-white rounded-lg shadow-sm p-3 border border-gray-100">
+            <h3 className="text-center font-bold mb-2 text-[#303030]">{getMonthName(monthIndex)}</h3>
             
             {/* Day headers - smaller for year view */}
             <div className="grid grid-cols-7 gap-0 mb-1">
               {dayNames.map(day => (
                 <div 
                   key={day} 
-                  className="text-center text-xs p-1 bg-gray-100"
+                  className="text-center text-xs p-1 bg-[#fff0e6] text-[#4e5c6f] font-medium"
                 >
                   {day}
                 </div>
@@ -772,14 +783,14 @@ export default function Calendar() {
               {month.map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className={`relative p-1 min-h-[24px] border border-gray-100 text-center ${!day.date ? 'opacity-30' : ''} ${day.date && isToday(day.date) ? 'bg-indigo-50' : ''}`}
+                  className={`relative p-1 min-h-[24px] border border-gray-100 text-center ${!day.date ? 'opacity-30' : ''} ${day.date && isToday(day.date) ? 'bg-[#fff0e6]' : ''}`}
                 >
                   {day.date && (
                     <>
-                      <div className="text-xs">{day.date.getDate()}</div>
+                      <div className="text-xs text-[#4e5c6f]">{day.date.getDate()}</div>
                       {day.payments.length > 0 && (
                         <div 
-                          className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500"
+                          className="absolute bottom-0 left-0 right-0 h-1 bg-[#e06c00]"
                           onMouseEnter={(e) => handlePaymentMouseEnter(e, day.payments[0])}
                           onMouseLeave={handlePaymentMouseLeave}
                         ></div>
@@ -791,7 +802,7 @@ export default function Calendar() {
             </div>
             
             {/* Payment count for this month */}
-            <div className="text-xs text-center mt-1">
+            <div className="text-xs text-center mt-2 text-[#4e5c6f] font-medium">
               {month.reduce((count, day) => count + (day.date ? day.payments.length : 0), 0)} payments
             </div>
           </div>
@@ -802,57 +813,66 @@ export default function Calendar() {
 
   return (
     <div>
-      <div className="section-header flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Calendar View</h2>
+      <div className="section-header flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-[#4e5c6f] flex items-center">
+          <CalendarDaysIcon className="w-7 h-7 mr-2 text-[#e06c00]" />
+          Calendar View
+        </h2>
         <div className="flex items-center space-x-4">
           <button 
             onClick={toggleViewMode}
-            className="btn btn-small bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+            className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
           >
+            <CalendarIcon className="w-5 h-5" />
             {viewMode === 'month' ? 'Year View' : 'Month View'}
           </button>
           <div className="flex items-center space-x-2">
             <button 
               onClick={goToPrevious} 
-              className="btn btn-small"
+              className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
+              aria-label="Previous period"
             >
-              &larr; {viewMode === 'month' ? 'Prev' : 'Prev Year'}
+              <ChevronLeftIcon className="w-5 h-5" />
             </button>
-            <span className="text-lg font-medium">
+            <span className="text-lg font-medium text-[#303030] px-2">
               {formatViewDate()}
             </span>
             <button 
               onClick={goToNext} 
-              className="btn btn-small"
+              className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
+              aria-label="Next period"
             >
-              {viewMode === 'month' ? 'Next' : 'Next Year'} &rarr;
+              <ChevronRightIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Payment Summary - moved to the top */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-md">
-        <h3 className="font-bold mb-2">Payment Summary</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-gray-600">Total Recurring Payments</p>
-            <p className="text-xl font-bold">{recurringPayments.length}</p>
+      <div className="mb-6 p-5 bg-white rounded-lg border border-gray-100 shadow-sm">
+        <h3 className="font-bold mb-3 text-[#4e5c6f] flex items-center">
+          <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+          Payment Summary
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-[#fff8f0] rounded-lg p-4 border border-[#f4e0d0]">
+            <p className="text-sm text-[#4e5c6f] mb-1">Total Recurring Payments</p>
+            <p className="text-2xl font-bold text-[#303030]">{recurringPayments.length}</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-600">Monthly Total (Based on {viewMode === 'month' ? 'Current' : 'All'} View)</p>
-            <p className="text-xl font-bold">
+          <div className="bg-[#fff8f0] rounded-lg p-4 border border-[#f4e0d0]">
+            <p className="text-sm text-[#4e5c6f] mb-1">Monthly Total ({viewMode === 'month' ? 'Current' : 'All'} View)</p>
+            <p className="text-2xl font-bold text-[#e06c00]">
               {isConverting ? (
                 <span className="text-base">Converting currencies...</span>
               ) : (
                 formatCurrency(calculateMonthlyTotalInDisplayCurrency(), displayCurrency)
               )}
             </p>
-            <p className="text-xs text-gray-500">All amounts shown in {displayCurrency}</p>
+            <p className="text-xs text-[#4e5c6f] mt-1">All amounts shown in {displayCurrency}</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-600">Yearly Total</p>
-            <p className="text-xl font-bold">
+          <div className="bg-[#fff8f0] rounded-lg p-4 border border-[#f4e0d0]">
+            <p className="text-sm text-[#4e5c6f] mb-1">Yearly Total</p>
+            <p className="text-2xl font-bold text-[#e06c00]">
               {isConverting ? (
                 <span className="text-base">Converting currencies...</span>
               ) : (
@@ -863,53 +883,59 @@ export default function Calendar() {
         </div>
         
         {/* See breakdown toggle button */}
-        <div className="mt-3 text-right">
+        <div className="mt-4">
           <button 
             onClick={() => setShowBreakdown(!showBreakdown)}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center ml-auto"
+            className="flex items-center w-full justify-center py-2 border-t border-gray-200 text-[#4e5c6f] hover:text-[#e06c00] font-medium transition-colors"
           >
-            {showBreakdown ? 'Hide breakdown' : 'See breakdown'} 
-            <svg 
-              className={`ml-1 w-4 h-4 transition-transform ${showBreakdown ? 'transform rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            {showBreakdown ? 'Hide breakdown' : 'See detailed breakdown'} 
+            {showBreakdown ? (
+              <ChevronUpIcon className="ml-1 w-5 h-5" />
+            ) : (
+              <ChevronDownIcon className="ml-1 w-5 h-5" />
+            )}
           </button>
         </div>
         
         {/* Breakdown section */}
         {showBreakdown && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="font-semibold mb-3">Detailed Payment Breakdown</h4>
+            <h4 className="font-semibold mb-4 text-[#303030]">Detailed Payment Breakdown</h4>
             
             {isConverting ? (
-              <div className="text-center py-4">
+              <div className="text-center py-6">
                 <LoadingAnimation size="small" />
-                <p className="text-sm text-gray-600 mt-2">Converting currencies to {displayCurrency}...</p>
+                <p className="text-sm text-[#4e5c6f] mt-2">Converting currencies to {displayCurrency}...</p>
               </div>
             ) : calculatePaymentsBySource().length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {calculatePaymentsBySource().map((sourceGroup, index) => (
-                  <div key={index} className="bg-white p-3 rounded shadow-sm">
-                    <div className="flex justify-between items-center mb-2">
-                      <h5 className="font-medium">{sourceGroup.source.name}</h5>
-                      <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+                  <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center">
+                        {sourceGroup.source.type === 'bank_account' ? (
+                          <BanknotesIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                        ) : (
+                          <CreditCardIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                        )}
+                        <h5 className="font-medium text-[#303030]">{sourceGroup.source.name}</h5>
+                      </div>
+                      <span className="text-sm bg-[#fff0e6] px-2 py-1 rounded-full text-[#e06c00] font-medium">
                         {sourceGroup.count} payment{sourceGroup.count !== 1 ? 's' : ''}
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <p className="text-gray-600">Type</p>
-                        <p>{sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} ({sourceGroup.source.identifier})</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Source Type</p>
+                        <p className="font-medium text-[#303030]">
+                          {sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                          <span className="text-[#e06c00] ml-1">•••• {sourceGroup.source.identifier}</span>
+                        </p>
                       </div>
-                      <div>
-                        <p className="text-gray-600">Monthly Total ({displayCurrency})</p>
-                        <p className="font-semibold">
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Monthly Total</p>
+                        <p className="font-semibold text-[#303030]">
                           {formatCurrency(
                             // Convert USD amount to display currency
                             paymentsInDisplayCurrency.length > 0
@@ -920,9 +946,9 @@ export default function Calendar() {
                           )}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-gray-600">Yearly Total ({displayCurrency})</p>
-                        <p className="font-semibold">
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Yearly Total</p>
+                        <p className="font-semibold text-[#303030]">
                           {formatCurrency(
                             // Convert USD amount to display currency
                             paymentsInDisplayCurrency.length > 0
@@ -936,27 +962,33 @@ export default function Calendar() {
                     </div>
                     
                     {/* List of payments for this source */}
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <p className="text-xs text-gray-500 mb-1">Recurring Payments:</p>
-                      <div className="text-sm space-y-1">
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-[#4e5c6f] mb-2 font-medium">Recurring Payments:</p>
+                      <div className="text-sm space-y-2">
                         {sourceGroup.payments.map((payment, idx) => {
                           // Find converted amount in display currency
                           const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
                           
                           return (
-                            <div key={idx} className="flex justify-between">
-                              <span>{payment.name}</span>
-                              <span className="font-medium">
-                                {formatCurrency(payment.amount, payment.currency)} 
+                            <div key={idx} className="flex justify-between items-center p-2 hover:bg-[#f9f9f9] rounded-lg">
+                              <div className="flex items-center">
+                                <CurrencyDollarIcon className="w-4 h-4 mr-2 text-[#e06c00]" />
+                                <span className="text-[#303030]">{payment.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium text-[#303030]">
+                                  {formatCurrency(payment.amount, payment.currency)}
+                                </div> 
                                 {displayCurrency !== payment.currency && displayAmount && (
-                                  <span className="text-xs text-gray-500 ml-1">
-                                    ({formatCurrency(displayAmount, displayCurrency)})
-                                  </span>
+                                  <div className="text-xs text-[#4e5c6f]">
+                                    {formatCurrency(displayAmount, displayCurrency)}
+                                  </div>
                                 )}
-                                <span className="text-gray-500 ml-1">
+                                <div className="text-xs text-[#4e5c6f] flex items-center justify-end mt-1">
+                                  <ArrowPathIcon className="w-3 h-3 mr-1" />
                                   {formatFrequency(payment.frequency)}
-                                </span>
-                              </span>
+                                </div>
+                              </div>
                             </div>
                           );
                         })}
@@ -966,14 +998,19 @@ export default function Calendar() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No payment sources with recurring payments found.</p>
+              <p className="text-sm text-[#4e5c6f] py-4 text-center">No payment sources with recurring payments found.</p>
             )}
           </div>
         )}
       </div>
 
       {error && (
-        <div className="error-message mb-4">{error}</div>
+        <div className="error-message mb-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          {error}
+        </div>
       )}
 
       {isLoading ? (
@@ -981,31 +1018,49 @@ export default function Calendar() {
           <LoadingAnimation size="large" />
         </div>
       ) : recurringPayments.length === 0 ? (
-        <div className="text-center py-8">
-          <p>No recurring payments added yet. Add payments to see them in the calendar view.</p>
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-100 shadow-sm">
+          <div className="w-16 h-16 mx-auto bg-[#fff0e6] rounded-full flex items-center justify-center mb-4">
+            <CalendarDaysIcon className="w-8 h-8 text-[#e06c00]" />
+          </div>
+          <p className="text-[#4e5c6f] mb-4">No recurring payments added yet. Add payments to see them in the calendar view.</p>
+          <button 
+            onClick={() => router.push('/dashboard/recurring-payments')}
+            className="btn btn-primary flex items-center gap-2 mx-auto"
+          >
+            <PlusIcon className="w-5 h-5" />
+            <span>Add Recurring Payment</span>
+          </button>
         </div>
       ) : (
-        viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()
+        <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
+          {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
+        </div>
       )}
       
       {/* Payment details tooltip on hover */}
       {hoverPayment && (
         <div 
-          className="fixed bg-white shadow-lg rounded-md p-3 z-50 border border-gray-200 w-64"
+          className="fixed bg-white shadow-lg rounded-lg p-4 z-50 border border-gray-200 w-72"
           style={{
             left: `${hoverPayment.position.x + 10}px`,
             top: `${hoverPayment.position.y + 10}px`
           }}
         >
-          <div className="font-bold text-lg mb-1">{hoverPayment.paymentItem.payment.name}</div>
-          <div className="mb-1">
-            <span className="font-medium">Amount:</span> {formatCurrency(hoverPayment.paymentItem.payment.amount, hoverPayment.paymentItem.payment.currency)}
+          <div className="font-bold text-lg mb-2 text-[#303030] pb-2 border-b border-gray-100">
+            {hoverPayment.paymentItem.payment.name}
+          </div>
+          
+          <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm">
+            <span className="font-medium text-[#4e5c6f]">Amount:</span> 
+            <span className="text-[#e06c00] font-semibold">
+              {formatCurrency(hoverPayment.paymentItem.payment.amount, hoverPayment.paymentItem.payment.currency)}
+            </span>
             
             {/* Show converted amount if available and different from original currency */}
             {displayCurrency !== hoverPayment.paymentItem.payment.currency && (
               <>
-                <br />
-                <span className="text-sm text-gray-600">
+                <span className="font-medium text-[#4e5c6f]">Converted:</span>
+                <span className="text-[#4e5c6f]">
                   {isConverting ? 'Converting...' : (
                     <>
                       {formatCurrency(
@@ -1013,29 +1068,36 @@ export default function Calendar() {
                           p => p.id === hoverPayment.paymentItem.payment.id
                         )?.amount || hoverPayment.paymentItem.payment.amount,
                         displayCurrency
-                      )} ({displayCurrency})
+                      )}
                     </>
                   )}
                 </span>
               </>
             )}
+            
+            <span className="font-medium text-[#4e5c6f]">Frequency:</span> 
+            <span className="text-[#303030]">{formatFrequency(hoverPayment.paymentItem.payment.frequency)}</span>
+            
+            <span className="font-medium text-[#4e5c6f]">Start Date:</span> 
+            <span className="text-[#303030]">{new Date(hoverPayment.paymentItem.payment.start_date).toLocaleDateString()}</span>
+            
+            <span className="font-medium text-[#4e5c6f]">Source:</span> 
+            <span className="text-[#303030]">{hoverPayment.paymentItem.paymentSource?.name || 'Unknown'}</span>
+            
+            {hoverPayment.paymentItem.paymentSource && (
+              <>
+                <span className="font-medium text-[#4e5c6f]">Type:</span> 
+                <span className="text-[#303030]">
+                  {hoverPayment.paymentItem.paymentSource.type === 'bank_account' 
+                    ? 'Bank Account' 
+                    : 'Card'} 
+                  <span className="text-[#e06c00] ml-1">
+                    •••• {hoverPayment.paymentItem.paymentSource.identifier}
+                  </span>
+                </span>
+              </>
+            )}
           </div>
-          <div className="mb-1">
-            <span className="font-medium">Frequency:</span> {formatFrequency(hoverPayment.paymentItem.payment.frequency)}
-          </div>
-          <div className="mb-1">
-            <span className="font-medium">Start Date:</span> {new Date(hoverPayment.paymentItem.payment.start_date).toLocaleDateString()}
-          </div>
-          <div className="mb-1">
-            <span className="font-medium">Payment Source:</span> {hoverPayment.paymentItem.paymentSource?.name || 'Unknown'}
-          </div>
-          {hoverPayment.paymentItem.paymentSource && (
-            <div>
-              <span className="font-medium">Source Type:</span> {hoverPayment.paymentItem.paymentSource.type === 'bank_account' 
-                ? `Bank Account (${hoverPayment.paymentItem.paymentSource.identifier})` 
-                : `Card (${hoverPayment.paymentItem.paymentSource.identifier})`}
-            </div>
-          )}
         </div>
       )}
     </div>
