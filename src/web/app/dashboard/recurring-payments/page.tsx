@@ -338,11 +338,6 @@ export default function RecurringPayments() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {recurringPayments.map(payment => (
             <div key={payment.id} className="card">
-              <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-                <div className="absolute transform rotate-45 bg-[#fff0e6] text-[#e06c00] font-semibold py-1 right-[-35px] top-[12px] w-[135px] text-center text-xs uppercase">
-                  {formatFrequency(payment.frequency)}
-                </div>
-              </div>
               <div className="card-header">
                 <div className="flex items-center">
                   <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
@@ -366,12 +361,13 @@ export default function RecurringPayments() {
                 </div>
               </div>
               <div className="card-content">
-                <p className="mb-2 text-lg font-semibold text-[#e06c00]">
-                  {formatCurrency(payment.amount, payment.currency)}
-                </p>
-                <div className="flex items-center mb-1.5">
-                  <ArrowPathIcon className="w-4 h-4 mr-2 text-[#4e5c6f]" />
-                  <span className="text-[#303030]">{formatFrequency(payment.frequency)}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-lg font-semibold text-[#e06c00]">
+                    {formatCurrency(payment.amount, payment.currency)}
+                  </p>
+                  <span className="bg-[#fff0e6] text-[#e06c00] px-2 py-0.5 rounded-full text-xs font-medium">
+                    {formatFrequency(payment.frequency)}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   {paymentSources.find(s => s.id === payment.payment_source_id)?.type === 'bank_account' ? (
