@@ -308,11 +308,10 @@ export default function Calendar() {
 
   // Update calendar when current date or view mode changes
   useEffect(() => {
-    if (viewMode === 'month') {
-      generateMonthCalendar();
-    } else {
-      generateYearCalendar();
-    }
+    // Always generate both month and year data regardless of the current view mode
+    // This ensures yearly totals are calculated correctly even when starting in month view
+    generateMonthCalendar();
+    generateYearCalendar();
   }, [currentDate, viewMode, recurringPayments, paymentSources, generateMonthCalendar, generateYearCalendar]);
 
   // Get all payment occurrences for a day
