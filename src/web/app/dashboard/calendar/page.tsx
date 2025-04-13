@@ -542,22 +542,8 @@ export default function Calendar() {
         </div>
       </div>
 
-      {error && (
-        <div className="error-message mb-4">{error}</div>
-      )}
-
-      {isLoading ? (
-        <div className="text-center py-8">Loading...</div>
-      ) : recurringPayments.length === 0 ? (
-        <div className="text-center py-8">
-          <p>No recurring payments added yet. Add payments to see them in the calendar view.</p>
-        </div>
-      ) : (
-        viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()
-      )}
-      
-      {/* Summary statistics */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-md">
+      {/* Payment Summary - moved to the top */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-md">
         <h3 className="font-bold mb-2">Payment Summary</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -574,26 +560,32 @@ export default function Calendar() {
                   : (yearCalendar.length > 0 && currentDate.getMonth() < yearCalendar.length 
                       ? yearCalendar[currentDate.getMonth()].reduce((sum, day) => 
                           sum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0)
-                      : 0), 
-                'USD'
-              )}
+                      : 0)
+              , 'USD')}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Yearly Total (Estimated)</p>
+            <p className="text-sm text-gray-600">Yearly Total</p>
             <p className="text-xl font-bold">
-              {formatCurrency(
-                yearCalendar.length > 0
-                  ? yearCalendar.reduce((sum, month) => 
-                      sum + month.reduce((monthSum, day) => 
-                        monthSum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0), 0)
-                  : 0,
-                'USD'
-              )}
+              {formatCurrency(calculateYearlyTotal(), 'USD')}
             </p>
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="error-message mb-4">{error}</div>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-8">Loading...</div>
+      ) : recurringPayments.length === 0 ? (
+        <div className="text-center py-8">
+          <p>No recurring payments added yet. Add payments to see them in the calendar view.</p>
+        </div>
+      ) : (
+        viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()
+      )}
       
       {/* Payment details tooltip on hover */}
       {hoverPayment && (
