@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 245, 245, 245;
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors;
+  }
+  
+  .btn-primary {
+    @apply bg-indigo-600 text-white hover:bg-indigo-700;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-500 text-white hover:bg-gray-600;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .btn-small {
+    @apply px-2 py-1 text-sm;
+  }
+  
+  .form-group {
+    @apply mb-4;
+  }
+  
+  .form-group label {
+    @apply block mb-2 font-medium;
+  }
+  
+  .form-group input, 
+  .form-group select, 
+  .form-group textarea {
+    @apply w-full p-2 border border-gray-300 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent;
+  }
+  
+  .error-message {
+    @apply text-red-600 mb-2;
+  }
+
+  .card {
+    @apply bg-white rounded-md shadow-md p-4 relative;
+  }
+  
+  .card-header {
+    @apply flex justify-between items-start mb-2;
+  }
+  
+  .card-actions {
+    @apply flex gap-2;
+  }
+  
+  .card-content {
+    @apply mb-2;
+  }
+  
+  .card-footer {
+    @apply text-sm text-gray-500;
+  }
+
+  .calendar-day {
+    @apply bg-white rounded-md p-2 min-h-[100px] border border-gray-200;
+  }
+  
+  .calendar-day.today {
+    @apply bg-indigo-50;
+  }
+  
+  .calendar-day-header {
+    @apply text-center font-bold mb-2 pb-1 border-b border-gray-200;
+  }
+  
+  .event-item {
+    @apply p-1 mb-1 rounded-md bg-indigo-50 border-l-4 border-indigo-600 text-sm;
+  }
+}
