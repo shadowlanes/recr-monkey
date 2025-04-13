@@ -1,21 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
-import { supabase, TABLES, PAYMENT_FREQUENCIES } from '../../lib/supabase';
+import { supabase, TABLES, PAYMENT_FREQUENCIES, convertToUSD } from '../../lib/supabase';
 import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
 
 // View mode types
 type CalendarViewMode = 'month' | 'year';
 
+// Interface for payment with USD conversion
+interface PaymentWithConversion extends RecurringPayment {
+  amountInUSD: number;
+}
+
 export default function Calendar() {
   const { user } = useAuth();
   const router = useRouter();
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
+  const [convertedPayments, setConvertedPayments] = useState<PaymentWithConversion[]>([]);
   const [paymentSources, setPaymentSources] = useState<PaymentSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConverting, setIsConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
@@ -65,6 +72,36 @@ export default function Calendar() {
       setIsLoading(false);
     }
   }, [user, router]);
+
+  // Convert payments to USD
+  useEffect(() => {
+    const convertPaymentAmounts = async () => {
+      if (recurringPayments.length === 0) return;
+      
+      setIsConverting(true);
+      try {
+        // Create converted payments with USD amounts
+        const converted = await Promise.all(
+          recurringPayments.map(async (payment) => {
+            // Convert amount to USD
+            const amountInUSD = await convertToUSD(payment.amount, payment.currency);
+            return {
+              ...payment,
+              amountInUSD
+            };
+          })
+        );
+        
+        setConvertedPayments(converted);
+      } catch (error) {
+        console.error('Error converting currencies:', error);
+      } finally {
+        setIsConverting(false);
+      }
+    };
+    
+    convertPaymentAmounts();
+  }, [recurringPayments]);
 
   // Generate month calendar
   const generateMonthCalendar = useCallback(() => {
@@ -302,35 +339,35 @@ export default function Calendar() {
     return paymentDates;
   };
 
-  // Calculate payments grouped by source
+  // Calculate payments grouped by source with USD conversion
   const calculatePaymentsBySource = useCallback(() => {
-    if (recurringPayments.length === 0 || paymentSources.length === 0) {
+    if (convertedPayments.length === 0 || paymentSources.length === 0) {
       return [];
     }
 
     // Group payments by source
     const paymentsBySource = paymentSources.map(source => {
-      const sourcePayments = recurringPayments.filter(payment => 
+      const sourcePayments = convertedPayments.filter(payment => 
         payment.payment_source_id === source.id
       );
       
-      // Calculate totals
+      // Calculate totals using converted USD amounts
       const monthlyTotal = sourcePayments.reduce((sum, payment) => {
         // Monthly frequency payments
         if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
-          return sum + payment.amount;
+          return sum + payment.amountInUSD;
         }
         // Weekly frequency payments (multiply by average weeks in a month)
         else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
-          return sum + (payment.amount * 4.33);
+          return sum + (payment.amountInUSD * 4.33);
         }
         // Every 4 weeks (slightly different than monthly)
         else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
-          return sum + (payment.amount * 1.08); // 13 payments per year instead of 12
+          return sum + (payment.amountInUSD * 1.08); // 13 payments per year instead of 12
         }
         // Yearly frequency payments (divide by 12 for monthly equivalent)
         else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
-          return sum + (payment.amount / 12);
+          return sum + (payment.amountInUSD / 12);
         }
         return sum;
       }, 0);
@@ -338,19 +375,19 @@ export default function Calendar() {
       const yearlyTotal = sourcePayments.reduce((sum, payment) => {
         // Monthly frequency payments
         if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
-          return sum + (payment.amount * 12);
+          return sum + (payment.amountInUSD * 12);
         }
         // Weekly frequency payments
         else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
-          return sum + (payment.amount * 52);
+          return sum + (payment.amountInUSD * 52);
         }
         // Every 4 weeks
         else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
-          return sum + (payment.amount * 13);
+          return sum + (payment.amountInUSD * 13);
         }
         // Yearly frequency payments
         else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
-          return sum + payment.amount;
+          return sum + payment.amountInUSD;
         }
         return sum;
       }, 0);
@@ -366,7 +403,7 @@ export default function Calendar() {
 
     // Sort by yearly total (highest first)
     return paymentsBySource.sort((a, b) => b.yearlyTotal - a.yearlyTotal);
-  }, [recurringPayments, paymentSources]);
+  }, [convertedPayments, paymentSources]);
 
   // Navigate to previous period (month or year)
   const goToPrevious = () => {
@@ -475,6 +512,58 @@ export default function Calendar() {
       sum + month.reduce((monthSum, day) => 
         monthSum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0), 0);
   };
+
+  // Calculate monthly total based on current view using USD conversion
+  const calculateMonthlyTotalUSD = useCallback((): number => {
+    if (convertedPayments.length === 0) return 0;
+    
+    // Create a lookup for USD amounts
+    const usdAmountMap = new Map(
+      convertedPayments.map(payment => [payment.id, payment.amountInUSD])
+    );
+    
+    if (viewMode === 'month') {
+      return calendarDays.reduce((sum, day) => 
+        sum + day.payments.reduce((daySum, payment) => {
+          // Use the converted USD amount if available
+          const amountInUSD = usdAmountMap.get(payment.payment.id) || payment.payment.amount;
+          return daySum + amountInUSD;
+        }, 0), 0);
+    } else {
+      // Make sure we have data for the current month before calculating
+      const currentMonth = currentDate.getMonth();
+      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
+        return yearCalendar[currentMonth].reduce((sum, day) => 
+          sum + day.payments.reduce((daySum, payment) => {
+            // Use the converted USD amount if available
+            const amountInUSD = usdAmountMap.get(payment.payment.id) || payment.payment.amount;
+            return daySum + amountInUSD;
+          }, 0), 0);
+      }
+      return 0;
+    }
+  }, [viewMode, calendarDays, yearCalendar, convertedPayments, currentDate]);
+
+  // Calculate yearly total using USD conversion
+  const calculateYearlyTotalUSD = useCallback((): number => {
+    if (convertedPayments.length === 0) return 0;
+    
+    // Create a lookup for USD amounts
+    const usdAmountMap = new Map(
+      convertedPayments.map(payment => [payment.id, payment.amountInUSD])
+    );
+    
+    // Make sure we have yearCalendar data before calculating
+    if (yearCalendar.length === 0) return 0;
+    
+    return yearCalendar.reduce((sum, month) => 
+      sum + month.reduce((monthSum, day) => 
+        monthSum + day.payments.reduce((daySum, payment) => {
+          // Use the converted USD amount if available
+          const amountInUSD = usdAmountMap.get(payment.payment.id) || payment.payment.amount;
+          return daySum + amountInUSD;
+        }, 0), 0), 0);
+  }, [yearCalendar, convertedPayments]);
 
   // Generate a month calendar grid
   const renderMonthCalendar = () => {
@@ -635,21 +724,22 @@ export default function Calendar() {
           <div>
             <p className="text-sm text-gray-600">Monthly Total (Based on {viewMode === 'month' ? 'Current' : 'All'} View)</p>
             <p className="text-xl font-bold">
-              {formatCurrency(
-                viewMode === 'month' 
-                  ? calendarDays.reduce((sum, day) => 
-                      sum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0)
-                  : (yearCalendar.length > 0 && currentDate.getMonth() < yearCalendar.length 
-                      ? yearCalendar[currentDate.getMonth()].reduce((sum, day) => 
-                          sum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0)
-                      : 0)
-              , 'USD')}
+              {isConverting ? (
+                <span className="text-base">Converting currencies...</span>
+              ) : (
+                formatCurrency(calculateMonthlyTotalUSD(), 'USD')
+              )}
             </p>
+            <p className="text-xs text-gray-500">All amounts shown in USD</p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Yearly Total</p>
             <p className="text-xl font-bold">
-              {formatCurrency(calculateYearlyTotal(), 'USD')}
+              {isConverting ? (
+                <span className="text-base">Converting currencies...</span>
+              ) : (
+                formatCurrency(calculateYearlyTotalUSD(), 'USD')
+              )}
             </p>
           </div>
         </div>
@@ -678,7 +768,12 @@ export default function Calendar() {
           <div className="mt-4 pt-4 border-t border-gray-200">
             <h4 className="font-semibold mb-3">Detailed Payment Breakdown</h4>
             
-            {calculatePaymentsBySource().length > 0 ? (
+            {isConverting ? (
+              <div className="text-center py-4">
+                <LoadingAnimation size="small" />
+                <p className="text-sm text-gray-600 mt-2">Converting currencies to USD...</p>
+              </div>
+            ) : calculatePaymentsBySource().length > 0 ? (
               <div className="space-y-4">
                 {calculatePaymentsBySource().map((sourceGroup, index) => (
                   <div key={index} className="bg-white p-3 rounded shadow-sm">
@@ -695,11 +790,11 @@ export default function Calendar() {
                         <p>{sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} ({sourceGroup.source.identifier})</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Monthly Total</p>
+                        <p className="text-gray-600">Monthly Total (USD)</p>
                         <p className="font-semibold">{formatCurrency(sourceGroup.monthlyTotal, 'USD')}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Yearly Total</p>
+                        <p className="text-gray-600">Yearly Total (USD)</p>
                         <p className="font-semibold">{formatCurrency(sourceGroup.yearlyTotal, 'USD')}</p>
                       </div>
                     </div>
@@ -712,7 +807,13 @@ export default function Calendar() {
                           <div key={idx} className="flex justify-between">
                             <span>{payment.name}</span>
                             <span className="font-medium">
-                              {formatCurrency(payment.amount, payment.currency)} ({formatFrequency(payment.frequency)})
+                              {formatCurrency(payment.amount, payment.currency)} 
+                              <span className="text-xs text-gray-500 ml-1">
+                                ({formatCurrency(payment.amountInUSD, 'USD')})
+                              </span> 
+                              <span className="text-gray-500">
+                                {formatFrequency(payment.frequency)}
+                              </span>
                             </span>
                           </div>
                         ))}
