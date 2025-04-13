@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
-import { supabase, TABLES, PAYMENT_FREQUENCIES, convertToUSD } from '../../lib/supabase';
+import { 
+  supabase, 
+  TABLES, 
+  PAYMENT_FREQUENCIES, 
+  convertToUSD, 
+  convertCurrency,
+  getDisplayCurrency
+} from '../../lib/supabase';
 import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
 
@@ -33,6 +40,15 @@ export default function Calendar() {
     position: { x: number; y: number };
   } | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
+
+  // State for display currency
+  const [displayCurrency, setDisplayCurrency] = useState<string>(getDisplayCurrency());
+  
+  // For tracking payments converted to the display currency
+  const [paymentsInDisplayCurrency, setPaymentsInDisplayCurrency] = useState<Array<{
+    id: string;
+    amount: number;
+  }>>([]);
 
   // Load data from Supabase
   const loadData = useCallback(async () => {
@@ -102,6 +118,56 @@ export default function Calendar() {
     
     convertPaymentAmounts();
   }, [recurringPayments]);
+
+  // Listen for currency change events
+  useEffect(() => {
+    const handleCurrencyChange = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const newCurrency = customEvent.detail;
+      setDisplayCurrency(newCurrency);
+    };
+
+    window.addEventListener('currency-changed', handleCurrencyChange);
+    
+    return () => {
+      window.removeEventListener('currency-changed', handleCurrencyChange);
+    };
+  }, []);
+
+  // Convert payments to display currency when currency changes or payments are loaded
+  useEffect(() => {
+    const convertToDisplayCurrency = async () => {
+      if (convertedPayments.length === 0) return;
+      
+      setIsConverting(true);
+      try {
+        // First, convert all amounts to the selected display currency
+        const converted = await Promise.all(
+          convertedPayments.map(async (payment) => {
+            // Convert from USD to the selected display currency
+            const convertedAmount = await convertCurrency(
+              payment.amountInUSD, 
+              'USD', 
+              displayCurrency
+            );
+            
+            return {
+              id: payment.id,
+              amount: convertedAmount
+            };
+          })
+        );
+        
+        setPaymentsInDisplayCurrency(converted);
+      } catch (error) {
+        console.error('Error converting to display currency:', error);
+      } finally {
+        setIsConverting(false);
+      }
+    };
+    
+    convertToDisplayCurrency();
+  }, [convertedPayments, displayCurrency]);
 
   // Generate month calendar
   const generateMonthCalendar = useCallback(() => {
@@ -565,6 +631,58 @@ export default function Calendar() {
         }, 0), 0), 0);
   }, [yearCalendar, convertedPayments]);
 
+  // Calculate monthly total in the selected display currency
+  const calculateMonthlyTotalInDisplayCurrency = useCallback((): number => {
+    if (convertedPayments.length === 0 || paymentsInDisplayCurrency.length === 0) return 0;
+    
+    // Create a lookup for display currency amounts
+    const displayCurrencyAmountMap = new Map(
+      paymentsInDisplayCurrency.map(payment => [payment.id, payment.amount])
+    );
+    
+    if (viewMode === 'month') {
+      return calendarDays.reduce((sum, day) => 
+        sum + day.payments.reduce((daySum, payment) => {
+          // Use the converted display currency amount if available
+          const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
+          return daySum + amountInDisplayCurrency;
+        }, 0), 0);
+    } else {
+      // Make sure we have data for the current month before calculating
+      const currentMonth = currentDate.getMonth();
+      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
+        return yearCalendar[currentMonth].reduce((sum, day) => 
+          sum + day.payments.reduce((daySum, payment) => {
+            // Use the converted display currency amount if available
+            const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
+            return daySum + amountInDisplayCurrency;
+          }, 0), 0);
+      }
+      return 0;
+    }
+  }, [viewMode, calendarDays, yearCalendar, convertedPayments, paymentsInDisplayCurrency, currentDate]);
+
+  // Calculate yearly total in the selected display currency
+  const calculateYearlyTotalInDisplayCurrency = useCallback((): number => {
+    if (convertedPayments.length === 0 || paymentsInDisplayCurrency.length === 0) return 0;
+    
+    // Create a lookup for display currency amounts
+    const displayCurrencyAmountMap = new Map(
+      paymentsInDisplayCurrency.map(payment => [payment.id, payment.amount])
+    );
+    
+    // Make sure we have yearCalendar data before calculating
+    if (yearCalendar.length === 0) return 0;
+    
+    return yearCalendar.reduce((sum, month) => 
+      sum + month.reduce((monthSum, day) => 
+        monthSum + day.payments.reduce((daySum, payment) => {
+          // Use the converted display currency amount if available
+          const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
+          return daySum + amountInDisplayCurrency;
+        }, 0), 0), 0);
+  }, [yearCalendar, convertedPayments, paymentsInDisplayCurrency]);
+
   // Generate a month calendar grid
   const renderMonthCalendar = () => {
     // ...existing code...
@@ -727,10 +845,10 @@ export default function Calendar() {
               {isConverting ? (
                 <span className="text-base">Converting currencies...</span>
               ) : (
-                formatCurrency(calculateMonthlyTotalUSD(), 'USD')
+                formatCurrency(calculateMonthlyTotalInDisplayCurrency(), displayCurrency)
               )}
             </p>
-            <p className="text-xs text-gray-500">All amounts shown in USD</p>
+            <p className="text-xs text-gray-500">All amounts shown in {displayCurrency}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Yearly Total</p>
@@ -738,7 +856,7 @@ export default function Calendar() {
               {isConverting ? (
                 <span className="text-base">Converting currencies...</span>
               ) : (
-                formatCurrency(calculateYearlyTotalUSD(), 'USD')
+                formatCurrency(calculateYearlyTotalInDisplayCurrency(), displayCurrency)
               )}
             </p>
           </div>
@@ -771,7 +889,7 @@ export default function Calendar() {
             {isConverting ? (
               <div className="text-center py-4">
                 <LoadingAnimation size="small" />
-                <p className="text-sm text-gray-600 mt-2">Converting currencies to USD...</p>
+                <p className="text-sm text-gray-600 mt-2">Converting currencies to {displayCurrency}...</p>
               </div>
             ) : calculatePaymentsBySource().length > 0 ? (
               <div className="space-y-4">
@@ -790,12 +908,30 @@ export default function Calendar() {
                         <p>{sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} ({sourceGroup.source.identifier})</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Monthly Total (USD)</p>
-                        <p className="font-semibold">{formatCurrency(sourceGroup.monthlyTotal, 'USD')}</p>
+                        <p className="text-gray-600">Monthly Total ({displayCurrency})</p>
+                        <p className="font-semibold">
+                          {formatCurrency(
+                            // Convert USD amount to display currency
+                            paymentsInDisplayCurrency.length > 0
+                              ? sourceGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
+                                paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount || sourceGroup.monthlyTotal
+                              : sourceGroup.monthlyTotal,
+                            displayCurrency
+                          )}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Yearly Total (USD)</p>
-                        <p className="font-semibold">{formatCurrency(sourceGroup.yearlyTotal, 'USD')}</p>
+                        <p className="text-gray-600">Yearly Total ({displayCurrency})</p>
+                        <p className="font-semibold">
+                          {formatCurrency(
+                            // Convert USD amount to display currency
+                            paymentsInDisplayCurrency.length > 0
+                              ? sourceGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
+                                paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount || sourceGroup.yearlyTotal
+                              : sourceGroup.yearlyTotal,
+                            displayCurrency
+                          )}
+                        </p>
                       </div>
                     </div>
                     
@@ -803,20 +939,27 @@ export default function Calendar() {
                     <div className="mt-2 pt-2 border-t border-gray-100">
                       <p className="text-xs text-gray-500 mb-1">Recurring Payments:</p>
                       <div className="text-sm space-y-1">
-                        {sourceGroup.payments.map((payment, idx) => (
-                          <div key={idx} className="flex justify-between">
-                            <span>{payment.name}</span>
-                            <span className="font-medium">
-                              {formatCurrency(payment.amount, payment.currency)} 
-                              <span className="text-xs text-gray-500 ml-1">
-                                ({formatCurrency(payment.amountInUSD, 'USD')})
-                              </span> 
-                              <span className="text-gray-500">
-                                {formatFrequency(payment.frequency)}
+                        {sourceGroup.payments.map((payment, idx) => {
+                          // Find converted amount in display currency
+                          const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
+                          
+                          return (
+                            <div key={idx} className="flex justify-between">
+                              <span>{payment.name}</span>
+                              <span className="font-medium">
+                                {formatCurrency(payment.amount, payment.currency)} 
+                                {displayCurrency !== payment.currency && displayAmount && (
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    ({formatCurrency(displayAmount, displayCurrency)})
+                                  </span>
+                                )}
+                                <span className="text-gray-500 ml-1">
+                                  {formatFrequency(payment.frequency)}
+                                </span>
                               </span>
-                            </span>
-                          </div>
-                        ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -857,6 +1000,25 @@ export default function Calendar() {
           <div className="font-bold text-lg mb-1">{hoverPayment.paymentItem.payment.name}</div>
           <div className="mb-1">
             <span className="font-medium">Amount:</span> {formatCurrency(hoverPayment.paymentItem.payment.amount, hoverPayment.paymentItem.payment.currency)}
+            
+            {/* Show converted amount if available and different from original currency */}
+            {displayCurrency !== hoverPayment.paymentItem.payment.currency && (
+              <>
+                <br />
+                <span className="text-sm text-gray-600">
+                  {isConverting ? 'Converting...' : (
+                    <>
+                      {formatCurrency(
+                        paymentsInDisplayCurrency.find(
+                          p => p.id === hoverPayment.paymentItem.payment.id
+                        )?.amount || hoverPayment.paymentItem.payment.amount,
+                        displayCurrency
+                      )} ({displayCurrency})
+                    </>
+                  )}
+                </span>
+              </>
+            )}
           </div>
           <div className="mb-1">
             <span className="font-medium">Frequency:</span> {formatFrequency(hoverPayment.paymentItem.payment.frequency)}

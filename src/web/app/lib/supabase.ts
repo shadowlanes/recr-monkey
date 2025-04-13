@@ -27,6 +27,25 @@ export const PAYMENT_FREQUENCIES = {
 // Supported currencies
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'AED'];
 
+// Default display currency
+export const DEFAULT_DISPLAY_CURRENCY = 'USD';
+
+// Get display currency from localStorage
+export const getDisplayCurrency = (): string => {
+  if (typeof window !== 'undefined') {
+    const savedCurrency = localStorage.getItem('displayCurrency');
+    return savedCurrency || DEFAULT_DISPLAY_CURRENCY;
+  }
+  return DEFAULT_DISPLAY_CURRENCY;
+};
+
+// Save display currency to localStorage
+export const saveDisplayCurrency = (currency: string): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('displayCurrency', currency);
+  }
+};
+
 // Currency conversion utility
 export interface ExchangeRates {
   rates: Record<string, number>;
@@ -106,6 +125,34 @@ export const convertToUSD = async (amount: number, currency: string): Promise<nu
     
     // Convert to USD (rate is how many units of the currency equal 1 USD)
     return amount / rate;
+  } catch (error) {
+    console.error('Error converting currency:', error);
+    return amount; // Return original amount on error
+  }
+};
+
+// Convert amount from one currency to another
+export const convertCurrency = async (amount: number, fromCurrency: string, toCurrency: string): Promise<number> => {
+  // If currencies are the same, return the original amount
+  if (fromCurrency === toCurrency) return amount;
+  
+  try {
+    const rates = await getCurrencyRates();
+    
+    // Get rates for both currencies
+    const fromRate = rates.rates[fromCurrency];
+    const toRate = rates.rates[toCurrency];
+    
+    if (!fromRate || !toRate) {
+      console.warn(`Exchange rate not found for ${fromCurrency} or ${toCurrency}, using direct value`);
+      return amount;
+    }
+    
+    // First convert to USD, then to target currency
+    // From currency to USD
+    const amountInUSD = amount / fromRate;
+    // USD to target currency
+    return amountInUSD * toRate;
   } catch (error) {
     console.error('Error converting currency:', error);
     return amount; // Return original amount on error

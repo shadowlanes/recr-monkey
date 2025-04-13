@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, TABLES } from '../lib/supabase';
 import LoadingAnimation from '../components/loading-animation';
+import CurrencySelector from '../components/currency-selector';
 
 export default function DashboardLayout({
   children,
@@ -55,21 +56,59 @@ export default function DashboardLayout({
     }
   }, [user]);
 
-  // Add signout handler to navigation when user is logged in
+  // Add currency selector and signout handler to navigation when user is logged in
   useEffect(() => {
     const navElement = document.getElementById('main-nav');
     if (navElement && user) {
+      // Create a container for the header controls
       navElement.innerHTML = `
-        <button id="logout-btn" class="btn btn-small btn-secondary">Logout</button>
+        <div class="header-controls flex items-center space-x-3">
+          <div id="currency-selector-container"></div>
+          <button id="logout-btn" class="btn btn-small btn-secondary">Logout</button>
+        </div>
       `;
+      
+      // Add logout event listener
       const logoutBtn = document.getElementById('logout-btn');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', signOut);
+      }
+      
+      // Render the currency selector component
+      const currencySelectorContainer = document.getElementById('currency-selector-container');
+      if (currencySelectorContainer && typeof window !== 'undefined') {
+        // Use a temporary div to render the component
+        const tempDiv = document.createElement('div');
+        tempDiv.className = 'flex items-center';
+        currencySelectorContainer.appendChild(tempDiv);
+        
+        // Add a label for the selector
+        const label = document.createElement('span');
+        label.className = 'text-sm text-gray-600 mr-2';
+        label.textContent = 'Display Currency:';
+        tempDiv.appendChild(label);
+        
+        // Create a container for the CurrencySelector
+        const selectorContainer = document.createElement('div');
+        selectorContainer.id = 'currency-selector-mount';
+        tempDiv.appendChild(selectorContainer);
       }
     } else if (navElement) {
       navElement.innerHTML = '';
     }
   }, [user, signOut]);
+
+  // Add the currency selector to the DOM after component mount
+  useEffect(() => {
+    // Find the currency selector mount point
+    const mountPoint = document.getElementById('currency-selector-mount');
+    if (mountPoint && typeof window !== 'undefined' && user) {
+      // Use React's createRoot to render the CurrencySelector component
+      const ReactDOM = require('react-dom/client');
+      const root = ReactDOM.createRoot(mountPoint);
+      root.render(<CurrencySelector />);
+    }
+  }, [user]);
 
   if (loading || isLoadingRecurringPayments) {
     return (
