@@ -60,8 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (hasRecurringPayments) {
             router.push('/dashboard/calendar');
           } else {
-            // Redirect to payment sources page where onboarding guide will be shown
-            router.push('/dashboard/payment-sources');
+            // Redirect to the dedicated onboarding page
+            router.push('/dashboard/onboarding');
           }
         }
       } catch (error) {
@@ -83,8 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (hasRecurringPayments) {
               router.push('/dashboard/calendar');
             } else {
-              // Redirect to payment sources page where onboarding guide will be shown
-              router.push('/dashboard/payment-sources');
+              // Redirect to the dedicated onboarding page
+              router.push('/dashboard/onboarding');
             }
           }
         } else {
