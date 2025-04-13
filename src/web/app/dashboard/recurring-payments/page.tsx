@@ -428,6 +428,8 @@ export default function RecurringPayments() {
                       <option value="CAD">CAD</option>
                       <option value="AUD">AUD</option>
                       <option value="JPY">JPY</option>
+                      <option value="INR">INR</option>
+                      <option value="AED">AED</option>
                     </select>
                   </div>
                   

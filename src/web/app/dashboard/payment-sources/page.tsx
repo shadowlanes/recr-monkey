@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { supabase, TABLES, PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
 import { PaymentSource } from '../../types';
+import OnboardingGuide from '../../components/onboarding-guide';
 
 export default function PaymentSources() {
   const { user } = useAuth();
@@ -210,6 +211,8 @@ export default function PaymentSources() {
 
   return (
     <div>
+      <OnboardingGuide hasPaymentSources={paymentSources.length > 0} />
+      
       <div className="section-header flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Payment Sources</h2>
         <button 

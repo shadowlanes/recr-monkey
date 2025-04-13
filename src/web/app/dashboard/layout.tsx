@@ -2,8 +2,10 @@
 
 import { useAuth } from '../components/auth/auth-provider';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase, TABLES } from '../lib/supabase';
+import OnboardingGuide from '../components/onboarding-guide';
 
 export default function DashboardLayout({
   children,
@@ -13,6 +15,8 @@ export default function DashboardLayout({
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [hasPaymentSources, setHasPaymentSources] = useState<boolean>(true);
+  const [isLoadingPaymentSources, setIsLoadingPaymentSources] = useState<boolean>(true);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -20,6 +24,35 @@ export default function DashboardLayout({
       router.push('/');
     }
   }, [loading, user, router]);
+
+  // Check if user has any payment sources
+  useEffect(() => {
+    if (user) {
+      const checkPaymentSources = async () => {
+        try {
+          setIsLoadingPaymentSources(true);
+          const { data, error } = await supabase
+            .from(TABLES.PAYMENT_SOURCES)
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1);
+            
+          if (error) {
+            console.error('Error checking payment sources:', error.message);
+            return;
+          }
+          
+          setHasPaymentSources(data && data.length > 0);
+        } catch (error: any) {
+          console.error('Error checking payment sources:', error.message);
+        } finally {
+          setIsLoadingPaymentSources(false);
+        }
+      };
+      
+      checkPaymentSources();
+    }
+  }, [user]);
 
   // Add signout handler to navigation when user is logged in
   useEffect(() => {
@@ -67,6 +100,10 @@ export default function DashboardLayout({
           Calendar View
         </Link>
       </div>
+      
+      {!isLoadingPaymentSources && (
+        <OnboardingGuide hasPaymentSources={hasPaymentSources} />
+      )}
       
       {children}
     </div>

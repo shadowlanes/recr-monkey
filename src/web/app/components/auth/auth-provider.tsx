@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { User, Provider } from '@supabase/supabase-js';
 
 type AuthContextType = {
   user: User | null;
@@ -10,6 +10,8 @@ type AuthContextType = {
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  sendMagicLink: (email: string) => Promise<void>;
+  signInWithSocialProvider: (provider: Provider) => Promise<void>;
   error: string | null;
 };
 
@@ -90,6 +92,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // New method for passwordless login with magic link
+  const sendMagicLink = async (email: string) => {
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      
+      if (error) {
+        throw error;
+      }
+    } catch (error: any) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  // New method for social login
+  const signInWithSocialProvider = async (provider: Provider) => {
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      
+      if (error) {
+        throw error;
+      }
+    } catch (error: any) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -99,7 +141,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, error }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      signUp, 
+      signIn, 
+      signOut, 
+      sendMagicLink, 
+      signInWithSocialProvider, 
+      error 
+    }}>
       {children}
     </AuthContext.Provider>
   );

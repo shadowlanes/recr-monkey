@@ -174,14 +174,14 @@ export default function Home() {
             <p className="text-gray-600 mb-4">
               "Recr-Monkey helped me discover I was paying for 3 subscriptions I had completely forgotten about. I saved over $40 per month!"
             </p>
-            <p className="font-medium">Sarah T., Product Manager</p>
+            <p className="font-medium">Bala G., Product Manager</p>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">
             <p className="text-gray-600 mb-4">
               "The calendar view makes it so easy to see when payments are coming up. I can finally budget properly and avoid overdraft fees."
             </p>
-            <p className="font-medium">Michael K., Freelancer</p>
+            <p className="font-medium">Anjani K., Freelancer</p>
           </div>
         </div>
       </section>
