@@ -85,7 +85,7 @@ export default function DashboardLayout({
         // Add a label for the selector
         const label = document.createElement('span');
         label.className = 'text-sm text-gray-600 mr-2';
-        label.textContent = 'Display Currency:';
+        label.textContent = 'Currency:';
         tempDiv.appendChild(label);
         
         // Create a container for the CurrencySelector
