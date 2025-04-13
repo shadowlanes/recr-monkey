@@ -22,6 +22,7 @@ export default function Calendar() {
     paymentItem: PaymentDateItem;
     position: { x: number; y: number };
   } | null>(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Load data from Supabase
   const loadData = useCallback(async () => {
@@ -185,7 +186,7 @@ export default function Calendar() {
     } else {
       generateYearCalendar();
     }
-  }, [currentDate, viewMode, recurringPayments, paymentSources]);
+  }, [currentDate, viewMode, recurringPayments, paymentSources, generateMonthCalendar, generateYearCalendar]);
 
   // Get all payment occurrences for a day
   const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
@@ -289,6 +290,72 @@ export default function Calendar() {
     
     return paymentDates;
   };
+
+  // Calculate payments grouped by source
+  const calculatePaymentsBySource = useCallback(() => {
+    if (recurringPayments.length === 0 || paymentSources.length === 0) {
+      return [];
+    }
+
+    // Group payments by source
+    const paymentsBySource = paymentSources.map(source => {
+      const sourcePayments = recurringPayments.filter(payment => 
+        payment.payment_source_id === source.id
+      );
+      
+      // Calculate totals
+      const monthlyTotal = sourcePayments.reduce((sum, payment) => {
+        // Monthly frequency payments
+        if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+          return sum + payment.amount;
+        }
+        // Weekly frequency payments (multiply by average weeks in a month)
+        else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+          return sum + (payment.amount * 4.33);
+        }
+        // Every 4 weeks (slightly different than monthly)
+        else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+          return sum + (payment.amount * 1.08); // 13 payments per year instead of 12
+        }
+        // Yearly frequency payments (divide by 12 for monthly equivalent)
+        else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+          return sum + (payment.amount / 12);
+        }
+        return sum;
+      }, 0);
+
+      const yearlyTotal = sourcePayments.reduce((sum, payment) => {
+        // Monthly frequency payments
+        if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+          return sum + (payment.amount * 12);
+        }
+        // Weekly frequency payments
+        else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+          return sum + (payment.amount * 52);
+        }
+        // Every 4 weeks
+        else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+          return sum + (payment.amount * 13);
+        }
+        // Yearly frequency payments
+        else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+          return sum + payment.amount;
+        }
+        return sum;
+      }, 0);
+
+      return {
+        source,
+        payments: sourcePayments,
+        count: sourcePayments.length,
+        monthlyTotal,
+        yearlyTotal
+      };
+    }).filter(group => group.payments.length > 0); // Remove sources with no payments
+
+    // Sort by yearly total (highest first)
+    return paymentsBySource.sort((a, b) => b.yearlyTotal - a.yearlyTotal);
+  }, [recurringPayments, paymentSources]);
 
   // Navigate to previous period (month or year)
   const goToPrevious = () => {
@@ -571,6 +638,79 @@ export default function Calendar() {
             </p>
           </div>
         </div>
+        
+        {/* See breakdown toggle button */}
+        <div className="mt-3 text-right">
+          <button 
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center ml-auto"
+          >
+            {showBreakdown ? 'Hide breakdown' : 'See breakdown'} 
+            <svg 
+              className={`ml-1 w-4 h-4 transition-transform ${showBreakdown ? 'transform rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Breakdown section */}
+        {showBreakdown && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <h4 className="font-semibold mb-3">Detailed Payment Breakdown</h4>
+            
+            {calculatePaymentsBySource().length > 0 ? (
+              <div className="space-y-4">
+                {calculatePaymentsBySource().map((sourceGroup, index) => (
+                  <div key={index} className="bg-white p-3 rounded shadow-sm">
+                    <div className="flex justify-between items-center mb-2">
+                      <h5 className="font-medium">{sourceGroup.source.name}</h5>
+                      <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+                        {sourceGroup.count} payment{sourceGroup.count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-gray-600">Type</p>
+                        <p>{sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} ({sourceGroup.source.identifier})</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Monthly Total</p>
+                        <p className="font-semibold">{formatCurrency(sourceGroup.monthlyTotal, 'USD')}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Yearly Total</p>
+                        <p className="font-semibold">{formatCurrency(sourceGroup.yearlyTotal, 'USD')}</p>
+                      </div>
+                    </div>
+                    
+                    {/* List of payments for this source */}
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 mb-1">Recurring Payments:</p>
+                      <div className="text-sm space-y-1">
+                        {sourceGroup.payments.map((payment, idx) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>{payment.name}</span>
+                            <span className="font-medium">
+                              {formatCurrency(payment.amount, payment.currency)} ({formatFrequency(payment.frequency)})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No payment sources with recurring payments found.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {error && (
