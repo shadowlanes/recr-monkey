@@ -29,12 +29,6 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources }) 
             <h3 className="text-lg font-semibold">Add Payment Source</h3>
           </div>
           <p className="text-gray-600 mb-4">First, add your payment sources like credit cards, bank accounts, or digital wallets.</p>
-          <Link 
-            href="/dashboard/payment-sources" 
-            className="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded transition duration-150 ease-in-out"
-          >
-            Add Payment Source
-          </Link>
         </div>
 
         <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50">
@@ -45,10 +39,6 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources }) 
             <h3 className="text-lg font-semibold">Set Up Recurring Payments</h3>
           </div>
           <p className="text-gray-600 mb-4">Then, add your recurring payments and subscriptions with their schedule.</p>
-          <div className="block w-full text-center bg-gray-300 text-gray-500 font-medium py-2 px-4 rounded cursor-not-allowed">
-            Add Recurring Payment
-            <p className="text-xs mt-1">(Add a payment source first)</p>
-          </div>
         </div>
 
         <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50">
@@ -59,10 +49,6 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources }) 
             <h3 className="text-lg font-semibold">View Calendar</h3>
           </div>
           <p className="text-gray-600 mb-4">Finally, view all your upcoming payments in the calendar for easy tracking.</p>
-          <div className="block w-full text-center bg-gray-300 text-gray-500 font-medium py-2 px-4 rounded cursor-not-allowed">
-            View Calendar
-            <p className="text-xs mt-1">(Set up payments first)</p>
-          </div>
         </div>
       </div>
 
