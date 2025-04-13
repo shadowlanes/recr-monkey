@@ -185,7 +185,7 @@ export default function Calendar() {
     } else {
       generateYearCalendar();
     }
-  }, [currentDate, viewMode, recurringPayments, paymentSources, generateMonthCalendar, generateYearCalendar]);
+  }, [currentDate, viewMode, recurringPayments, paymentSources]);
 
   // Get all payment occurrences for a day
   const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
@@ -567,13 +567,29 @@ export default function Calendar() {
           <div>
             <p className="text-sm text-gray-600">Monthly Total (Based on {viewMode === 'month' ? 'Current' : 'All'} View)</p>
             <p className="text-xl font-bold">
-              {formatCurrency(calculateMonthlyTotal(), 'USD')}
+              {formatCurrency(
+                viewMode === 'month' 
+                  ? calendarDays.reduce((sum, day) => 
+                      sum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0)
+                  : (yearCalendar.length > 0 && currentDate.getMonth() < yearCalendar.length 
+                      ? yearCalendar[currentDate.getMonth()].reduce((sum, day) => 
+                          sum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0)
+                      : 0), 
+                'USD'
+              )}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Yearly Total (Estimated)</p>
             <p className="text-xl font-bold">
-              {formatCurrency(calculateYearlyTotal(), 'USD')}
+              {formatCurrency(
+                yearCalendar.length > 0
+                  ? yearCalendar.reduce((sum, month) => 
+                      sum + month.reduce((monthSum, day) => 
+                        monthSum + (day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0)), 0), 0)
+                  : 0,
+                'USD'
+              )}
             </p>
           </div>
         </div>
