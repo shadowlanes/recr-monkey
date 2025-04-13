@@ -24,6 +24,7 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 
 // View mode types
@@ -938,9 +939,9 @@ export default function Calendar() {
                         <p className="font-semibold text-[#303030]">
                           {formatCurrency(
                             // Convert USD amount to display currency
-                            paymentsInDisplayCurrency.length > 0
+                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
                               ? sourceGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
-                                paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount || sourceGroup.monthlyTotal
+                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.monthlyTotal)
                               : sourceGroup.monthlyTotal,
                             displayCurrency
                           )}
@@ -951,9 +952,9 @@ export default function Calendar() {
                         <p className="font-semibold text-[#303030]">
                           {formatCurrency(
                             // Convert USD amount to display currency
-                            paymentsInDisplayCurrency.length > 0
+                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
                               ? sourceGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
-                                paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount || sourceGroup.yearlyTotal
+                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.yearlyTotal)
                               : sourceGroup.yearlyTotal,
                             displayCurrency
                           )}
