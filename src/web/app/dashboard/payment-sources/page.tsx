@@ -13,6 +13,7 @@ export default function PaymentSources() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'delete'>('add');
   const [currentSource, setCurrentSource] = useState<PaymentSource | null>(null);
+  const [associatedPayments, setAssociatedPayments] = useState<{id: string, name: string}[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     type: PAYMENT_SOURCE_TYPES.BANK_ACCOUNT,
@@ -58,7 +59,7 @@ export default function PaymentSources() {
     setIsModalOpen(true);
   };
 
-  const handleEdit = (source: PaymentSource) => {
+  const handleEdit = async (source: PaymentSource) => {
     setFormData({
       name: source.name,
       type: source.type,
@@ -66,6 +67,22 @@ export default function PaymentSources() {
     });
     setModalMode('edit');
     setCurrentSource(source);
+    
+    // Fetch associated recurring payments
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.RECURRING_PAYMENTS)
+        .select('id, name')
+        .eq('payment_source_id', source.id);
+        
+      if (error) throw error;
+      
+      setAssociatedPayments(data || []);
+    } catch (error: any) {
+      console.error('Error fetching associated payments:', error.message);
+      setAssociatedPayments([]);
+    }
+    
     setIsModalOpen(true);
   };
 
@@ -310,6 +327,19 @@ export default function PaymentSources() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit}>
+                  {modalMode === 'edit' && associatedPayments.length > 0 && (
+                    <div className="bg-blue-50 p-3 rounded mb-4 border border-blue-200">
+                      <h3 className="font-medium text-blue-800 mb-2">
+                        Associated Recurring Payments ({associatedPayments.length})
+                      </h3>
+                      <ul className="list-disc pl-5 text-sm text-blue-700">
+                        {associatedPayments.map(payment => (
+                          <li key={payment.id}>{payment.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
                   <div className="form-group">
                     <label htmlFor="name">Name</label>
                     <input
