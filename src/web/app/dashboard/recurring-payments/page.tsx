@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { supabase, TABLES, PAYMENT_FREQUENCIES } from '../../lib/supabase';
 import { RecurringPayment, PaymentSource } from '../../types';
+import LoadingAnimation from '../../components/loading-animation';
 
 export default function RecurringPayments() {
   const { user } = useAuth();
@@ -299,7 +300,9 @@ export default function RecurringPayments() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="text-center py-8">
+          <LoadingAnimation size="large" />
+        </div>
       ) : recurringPayments.length === 0 ? (
         <div className="text-center py-8">
           <p>No recurring payments added yet. Click "Add New" to get started.</p>

@@ -5,6 +5,7 @@ import { useAuth } from '../../components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { supabase, TABLES, PAYMENT_FREQUENCIES } from '../../lib/supabase';
 import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
+import LoadingAnimation from '../../components/loading-animation';
 
 // View mode types
 type CalendarViewMode = 'month' | 'year';
@@ -532,7 +533,11 @@ export default function Calendar() {
   const renderYearCalendar = () => {
     // Check if yearCalendar is ready
     if (yearCalendar.length === 0) {
-      return <div className="text-center py-8">Loading year view...</div>;
+      return (
+        <div className="text-center py-8">
+          <LoadingAnimation size="medium" />
+        </div>
+      );
     }
 
     const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -728,7 +733,9 @@ export default function Calendar() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="text-center py-8">
+          <LoadingAnimation size="large" />
+        </div>
       ) : recurringPayments.length === 0 ? (
         <div className="text-center py-8">
           <p>No recurring payments added yet. Add payments to see them in the calendar view.</p>

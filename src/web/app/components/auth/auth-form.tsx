@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from './auth-provider';
+import LoadingAnimation from '../loading-animation';
 
 export default function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -147,7 +148,13 @@ export default function AuthForm() {
           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           disabled={isLoading}
         >
-          {isLoading ? 'Loading...' : showMagicLink ? 'Send Magic Link' : isLogin ? 'Login' : 'Sign Up'}
+          {isLoading ? (
+            <div className="flex justify-center items-center">
+              <LoadingAnimation size="small" />
+            </div>
+          ) : (
+            showMagicLink ? 'Send Magic Link' : isLogin ? 'Login' : 'Sign Up'
+          )}
         </button>
       </form>
     </div>

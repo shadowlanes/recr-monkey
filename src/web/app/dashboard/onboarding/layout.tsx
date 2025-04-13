@@ -1,8 +1,9 @@
 'use client';
 
-import { useAuth } from '../../components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../components/auth/auth-provider';
 import { useEffect } from 'react';
+import LoadingAnimation from '../../components/loading-animation';
 
 export default function OnboardingLayout({
   children,
@@ -36,7 +37,11 @@ export default function OnboardingLayout({
   }, [user, signOut]);
 
   if (loading) {
-    return <div className="flex justify-center py-12">Loading...</div>;
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingAnimation size="large" />
+      </div>
+    );
   }
 
   if (!user) {

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, TABLES } from '../lib/supabase';
+import LoadingAnimation from '../components/loading-animation';
 
 export default function DashboardLayout({
   children,
@@ -71,7 +72,11 @@ export default function DashboardLayout({
   }, [user, signOut]);
 
   if (loading || isLoadingRecurringPayments) {
-    return <div className="flex justify-center py-12">Loading...</div>;
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingAnimation size="large" />
+      </div>
+    );
   }
 
   if (!user) {

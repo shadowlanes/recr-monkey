@@ -5,6 +5,7 @@ import AuthForm from './components/auth/auth-form';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from "next/image";
+import LoadingAnimation from './components/loading-animation';
 
 export default function Home() {
   const { user, loading, signOut } = useAuth();
@@ -31,7 +32,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-500"></div>
+        <LoadingAnimation size="large" />
       </div>
     );
   }

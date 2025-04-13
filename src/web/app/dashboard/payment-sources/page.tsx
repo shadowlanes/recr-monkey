@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { supabase, TABLES, PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
 import { PaymentSource } from '../../types';
+import LoadingAnimation from '../../components/loading-animation';
 
 export default function PaymentSources() { 
   const { user } = useAuth();
@@ -242,7 +243,9 @@ export default function PaymentSources() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="text-center py-8">
+          <LoadingAnimation size="large" />
+        </div>
       ) : paymentSources.length === 0 ? (
         <div className="text-center py-8">
           <p>No payment sources added yet. Click "Add New" to get started.</p>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase, TABLES } from '../../lib/supabase';
 import OnboardingGuide from '../../components/onboarding-guide';
+import LoadingAnimation from '../../components/loading-animation';
 
 export default function OnboardingPage() { 
   const { user, loading } = useAuth();
@@ -72,7 +73,11 @@ export default function OnboardingPage() {
   }, [user, router]);
 
   if (loading || isLoading) {
-    return <div className="flex justify-center py-12">Loading...</div>;
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingAnimation size="large" />
+      </div>
+    );
   }
 
   if (!user) {
