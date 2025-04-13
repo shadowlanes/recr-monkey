@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
+import { useRouter } from 'next/navigation';
 import { supabase, TABLES, PAYMENT_FREQUENCIES } from '../../lib/supabase';
 import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
 
@@ -10,6 +11,7 @@ type CalendarViewMode = 'month' | 'year';
 
 export default function Calendar() {
   const { user } = useAuth();
+  const router = useRouter();
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
   const [paymentSources, setPaymentSources] = useState<PaymentSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +48,14 @@ export default function Calendar() {
         
       if (paymentsError) throw paymentsError;
       setRecurringPayments(paymentsData || []);
+      
+      // Check if user has payment sources but no recurring payments
+      // If so, redirect to onboarding page
+      if ((sourcesData && sourcesData.length > 0) && 
+          (!paymentsData || paymentsData.length === 0)) {
+        router.push('/dashboard/onboarding');
+      }
+      
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Error loading data:', errorMessage);
@@ -53,7 +63,7 @@ export default function Calendar() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, router]);
 
   // Generate month calendar
   const generateMonthCalendar = useCallback(() => {

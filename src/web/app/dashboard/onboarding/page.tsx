@@ -10,7 +10,8 @@ import OnboardingGuide from '../../components/onboarding-guide';
 export default function OnboardingPage() { 
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [hasPaymentSources, setHasPaymentSources] = useState<boolean>(true);
+  const [hasPaymentSources, setHasPaymentSources] = useState<boolean>(false);
+  const [hasRecurringPayments, setHasRecurringPayments] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Redirect to home if not authenticated
@@ -20,10 +21,10 @@ export default function OnboardingPage() {
     }
   }, [loading, user, router]);
 
-  // Check if user has any payment sources 
+  // Check if user has any payment sources and recurring payments
   useEffect(() => {
     if (user) {
-      const checkPaymentSources = async () => {
+      const checkUserData = async () => {
         try {
           setIsLoading(true);
           
@@ -37,21 +38,36 @@ export default function OnboardingPage() {
           if (paymentSourcesError) {
             console.error('Error checking payment sources:', paymentSourcesError.message);
           } else {
-            setHasPaymentSources(paymentSourcesData && paymentSourcesData.length > 0);
+            const hasPaymentSrc = paymentSourcesData && paymentSourcesData.length > 0;
+            setHasPaymentSources(hasPaymentSrc);
             
-            // If user already has payment sources, redirect to calendar
-            if (paymentSourcesData && paymentSourcesData.length > 0) {
-              router.push('/dashboard/calendar');
+            // Check for recurring payments
+            const { data: recurringPaymentsData, error: recurringPaymentsError } = await supabase
+              .from(TABLES.RECURRING_PAYMENTS)
+              .select('id')
+              .eq('user_id', user.id)
+              .limit(1);
+              
+            if (recurringPaymentsError) {
+              console.error('Error checking recurring payments:', recurringPaymentsError.message);
+            } else {
+              const hasRecurringPmts = recurringPaymentsData && recurringPaymentsData.length > 0;
+              setHasRecurringPayments(hasRecurringPmts);
+              
+              // If user has both payment sources and recurring payments, redirect to calendar
+              if (hasPaymentSrc && hasRecurringPmts) {
+                router.push('/dashboard/calendar');
+              }
             }
           }
         } catch (error) {
-          console.error('Error checking payment sources:', error);
+          console.error('Error checking user data:', error);
         } finally {
           setIsLoading(false);
         }
       };
       
-      checkPaymentSources();
+      checkUserData();
     }
   }, [user, router]);
 
@@ -65,7 +81,11 @@ export default function OnboardingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <OnboardingGuide hasPaymentSources={hasPaymentSources} showButtons={true} />
+      <OnboardingGuide 
+        hasPaymentSources={hasPaymentSources} 
+        hasRecurringPayments={hasRecurringPayments}
+        showButtons={true} 
+      />
     </div>
   );
 }
