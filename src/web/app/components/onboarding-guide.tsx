@@ -22,14 +22,14 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources, sh
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50">
+        <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50 flex flex-col">
           <div className="flex items-center mb-4">
             <div className="bg-indigo-100 rounded-full w-8 h-8 flex items-center justify-center mr-3">
               <span className="text-indigo-700 font-bold">1</span>
             </div>
             <h3 className="text-lg font-semibold">Add Payment Source</h3>
           </div>
-          <p className="text-gray-600 mb-4">First, add your payment sources like credit cards, bank accounts, or digital wallets.</p>
+          <p className="text-gray-600 mb-4 flex-grow">First, add your payment sources like credit cards, bank accounts, or digital wallets.</p>
           {showButtons && (
             <Link href="/dashboard/payment-sources" className="btn block text-center w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
               Add Payment Source
@@ -37,14 +37,14 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources, sh
           )}
         </div>
 
-        <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50">
+        <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50 flex flex-col">
           <div className="flex items-center mb-4">
             <div className="bg-indigo-100 rounded-full w-8 h-8 flex items-center justify-center mr-3">
               <span className="text-indigo-700 font-bold">2</span>
             </div>
             <h3 className="text-lg font-semibold">Set Up Recurring Payments</h3>
           </div>
-          <p className="text-gray-600 mb-4">Then, add your recurring payments and subscriptions with their schedule.</p>
+          <p className="text-gray-600 mb-4 flex-grow">Then, add your recurring payments and subscriptions with their schedule.</p>
           {showButtons && (
             <Link href="/dashboard/recurring-payments" className="btn block text-center w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
               Add Recurring Payment
@@ -52,14 +52,14 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources, sh
           )}
         </div>
 
-        <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50">
+        <div className="flex-1 border border-gray-200 rounded-md p-5 bg-gray-50 flex flex-col">
           <div className="flex items-center mb-4">
             <div className="bg-indigo-100 rounded-full w-8 h-8 flex items-center justify-center mr-3">
               <span className="text-indigo-700 font-bold">3</span>
             </div>
             <h3 className="text-lg font-semibold">View Calendar</h3>
           </div>
-          <p className="text-gray-600 mb-4">Finally, view all your upcoming payments in the calendar for easy tracking.</p>
+          <p className="text-gray-600 mb-4 flex-grow">Finally, view all your upcoming payments in the calendar for easy tracking.</p>
           {showButtons && (
             <Link href="/dashboard/calendar" className="btn block text-center w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition-colors">
               View Calendar
