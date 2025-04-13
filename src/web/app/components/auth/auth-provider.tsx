@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { User, Provider } from '@supabase/supabase-js';
+import { User, Provider, AuthError } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 
 type AuthContextType = {
@@ -55,10 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data?.user) {
           setUser(data.user);
           
-          // Check for recurring payments and redirect if needed
+          // Check for recurring payments and redirect appropriately
           const hasRecurringPayments = await checkForRecurringPayments(data.user.id);
           if (hasRecurringPayments) {
             router.push('/dashboard/calendar');
+          } else {
+            // Redirect to payment sources page where onboarding guide will be shown
+            router.push('/dashboard/payment-sources');
           }
         }
       } catch (error) {
@@ -74,11 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setUser(session.user);
           
-          // On sign in or sign up, check if user has recurring payments and redirect
-          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
+          // On sign in or sign up, check if user has recurring payments and redirect appropriately
+          if (event === 'SIGNED_IN') {
             const hasRecurringPayments = await checkForRecurringPayments(session.user.id);
             if (hasRecurringPayments) {
               router.push('/dashboard/calendar');
+            } else {
+              // Redirect to payment sources page where onboarding guide will be shown
+              router.push('/dashboard/payment-sources');
             }
           }
         } else {
@@ -98,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string) => {
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -106,8 +112,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof AuthError) {
+        setError(error.message);
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw error;
     }
   };
@@ -115,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -123,8 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof AuthError) {
+        setError(error.message);
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw error;
     }
   };
@@ -143,8 +161,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof AuthError) {
+        setError(error.message);
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw error;
     }
   };
@@ -163,8 +187,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof AuthError) {
+        setError(error.message);
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw error;
     }
   };

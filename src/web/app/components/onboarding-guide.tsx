@@ -16,7 +16,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({ hasPaymentSources }) 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Recurring Monkey! 🐒</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Recr Monkey! 🐒</h2>
         <p className="text-gray-600">Let's get you started with tracking your recurring payments</p>
       </div>
 
