@@ -55,6 +55,8 @@ export default function Calendar() {
   } | null>(null);
   const [convertedPayments, setConvertedPayments] = useState<PaymentWithConversion[]>([]);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  // Tab state for breakdown section
+  const [activeBreakdownTab, setActiveBreakdownTab] = useState<'sources' | 'categories' | 'upcoming'>('sources');
 
   // State for display currency
   const [displayCurrency, setDisplayCurrency] = useState<string>(getDisplayCurrency());
@@ -439,6 +441,144 @@ export default function Calendar() {
     return paymentsBySource.sort((a, b) => b.yearlyTotal - a.yearlyTotal);
   }, [convertedPayments, paymentSources]);
 
+  // Calculate payments grouped by category with USD conversion
+  const calculatePaymentsByCategory = useCallback(() => {
+    if (convertedPayments.length === 0) {
+      return [];
+    }
+
+    // Group payments by category
+    const categoriesMap = new Map<string, {
+      category: string;
+      payments: PaymentWithConversion[];
+      count: number;
+      monthlyTotal: number;
+      yearlyTotal: number;
+    }>();
+
+    // Process each payment
+    convertedPayments.forEach(payment => {
+      const category = payment.category || 'Uncategorized';
+      
+      if (!categoriesMap.has(category)) {
+        categoriesMap.set(category, {
+          category,
+          payments: [],
+          count: 0,
+          monthlyTotal: 0,
+          yearlyTotal: 0
+        });
+      }
+      
+      const categoryData = categoriesMap.get(category)!;
+      categoryData.payments.push(payment);
+      categoryData.count += 1;
+      
+      // Calculate monthly contribution
+      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+        categoryData.monthlyTotal += payment.amountInUSD;
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+        categoryData.monthlyTotal += (payment.amountInUSD * 4.33);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+        categoryData.monthlyTotal += (payment.amountInUSD * 1.08);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+        categoryData.monthlyTotal += (payment.amountInUSD / 12);
+      }
+      
+      // Calculate yearly contribution
+      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+        categoryData.yearlyTotal += (payment.amountInUSD * 12);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+        categoryData.yearlyTotal += (payment.amountInUSD * 52);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+        categoryData.yearlyTotal += (payment.amountInUSD * 13);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+        categoryData.yearlyTotal += payment.amountInUSD;
+      }
+    });
+    
+    // Convert map to array and sort by yearly total
+    return Array.from(categoriesMap.values())
+      .sort((a, b) => b.yearlyTotal - a.yearlyTotal);
+  }, [convertedPayments]);
+
+  // Calculate upcoming payments in the next 4 weeks
+  const calculateUpcomingPayments = useCallback(() => {
+    if (recurringPayments.length === 0) return [];
+    
+    const today = new Date();
+    const fourWeeksLater = new Date(today);
+    fourWeeksLater.setDate(today.getDate() + 28);
+    
+    const upcomingPayments: Array<{
+      payment: RecurringPayment;
+      paymentSource: any;
+      dueDate: Date;
+      daysUntilDue: number;
+    }> = [];
+    
+    // Calculate next occurrence for each payment
+    recurringPayments.forEach(payment => {
+      const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
+      const startDate = new Date(payment.start_date);
+      
+      // Skip if start date is in the future beyond our 4-week window
+      if (startDate > fourWeeksLater) return;
+      
+      // Calculate next occurrence based on frequency
+      let nextOccurrence = new Date(startDate);
+      
+      // If start date is in the past, find the next upcoming occurrence
+      if (startDate < today) {
+        switch (payment.frequency) {
+          case PAYMENT_FREQUENCIES.WEEKLY: {
+            // Find next weekly occurrence
+            while (nextOccurrence < today) {
+              nextOccurrence.setDate(nextOccurrence.getDate() + 7);
+            }
+            break;
+          }
+          case PAYMENT_FREQUENCIES.MONTHLY: {
+            // Find next monthly occurrence
+            while (nextOccurrence < today) {
+              nextOccurrence.setMonth(nextOccurrence.getMonth() + 1);
+            }
+            break;
+          }
+          case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
+            // Find next 4-weekly occurrence
+            while (nextOccurrence < today) {
+              nextOccurrence.setDate(nextOccurrence.getDate() + 28);
+            }
+            break;
+          }
+          case PAYMENT_FREQUENCIES.YEARLY: {
+            // Find next yearly occurrence
+            while (nextOccurrence < today) {
+              nextOccurrence.setFullYear(nextOccurrence.getFullYear() + 1);
+            }
+            break;
+          }
+        }
+      }
+      
+      // Only include if next occurrence is within our 4-week window
+      if (nextOccurrence <= fourWeeksLater) {
+        const daysUntilDue = Math.ceil((nextOccurrence.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        upcomingPayments.push({
+          payment,
+          paymentSource,
+          dueDate: nextOccurrence,
+          daysUntilDue
+        });
+      }
+    });
+    
+    // Sort by due date (soonest first)
+    return upcomingPayments.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }, [recurringPayments, paymentSources]);
+
   // Navigate to previous period (month or year)
   const goToPrevious = () => {
     if (viewMode === 'month') {
@@ -767,6 +907,340 @@ export default function Calendar() {
     );
   };
 
+  // Render breakdown tabs UI
+  const renderBreakdownTabs = () => {
+    return (
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <h4 className="font-semibold mb-4 text-[#303030]">Detailed Payment Breakdown</h4>
+        
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-200 mb-4">
+          <button
+            onClick={() => setActiveBreakdownTab('sources')}
+            className={`px-4 py-2 font-medium text-sm ${
+              activeBreakdownTab === 'sources'
+                ? 'text-[#e06c00] border-b-2 border-[#e06c00]'
+                : 'text-[#4e5c6f] hover:text-[#303030]'
+            }`}
+          >
+            By Sources
+          </button>
+          <button
+            onClick={() => setActiveBreakdownTab('categories')}
+            className={`px-4 py-2 font-medium text-sm ${
+              activeBreakdownTab === 'categories'
+                ? 'text-[#e06c00] border-b-2 border-[#e06c00]'
+                : 'text-[#4e5c6f] hover:text-[#303030]'
+            }`}
+          >
+            By Categories
+          </button>
+          <button
+            onClick={() => setActiveBreakdownTab('upcoming')}
+            className={`px-4 py-2 font-medium text-sm ${
+              activeBreakdownTab === 'upcoming'
+                ? 'text-[#e06c00] border-b-2 border-[#e06c00]'
+                : 'text-[#4e5c6f] hover:text-[#303030]'
+            }`}
+          >
+            Upcoming Payments
+          </button>
+        </div>
+        
+        {/* Tab Content */}
+        {isConverting ? (
+          <div className="text-center py-6">
+            <LoadingAnimation size="small" />
+            <p className="text-sm text-[#4e5c6f] mt-2">Converting currencies to {displayCurrency}...</p>
+          </div>
+        ) : activeBreakdownTab === 'sources' ? (
+          // By Sources Tab (existing content)
+          calculatePaymentsBySource().length > 0 ? (
+            <div className="space-y-5">
+              {calculatePaymentsBySource().map((sourceGroup, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      {sourceGroup.source.type === 'bank_account' ? (
+                        <BanknotesIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                      ) : (
+                        <CreditCardIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                      )}
+                      <h5 className="font-medium text-[#303030]">{sourceGroup.source.name}</h5>
+                    </div>
+                    <span className="text-sm bg-[#fff0e6] px-2 py-1 rounded-full text-[#e06c00] font-medium">
+                      {sourceGroup.count} payment{sourceGroup.count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                      <p className="text-[#4e5c6f] mb-1">Source Type</p>
+                      <p className="font-medium text-[#303030]">
+                        {sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                        <span className="text-[#e06c00] ml-1">•••• {sourceGroup.source.identifier}</span>
+                      </p>
+                    </div>
+                    <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                      <p className="text-[#4e5c6f] mb-1">Monthly Total</p>
+                      <p className="font-semibold text-[#303030]">
+                        {formatCurrency(
+                          // Convert USD amount to display currency
+                          paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                            ? sourceGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
+                              (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.monthlyTotal)
+                            : sourceGroup.monthlyTotal,
+                          displayCurrency
+                        )}
+                      </p>
+                    </div>
+                    <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                      <p className="text-[#4e5c6f] mb-1">Yearly Total</p>
+                      <p className="font-semibold text-[#303030]">
+                        {formatCurrency(
+                          // Convert USD amount to display currency
+                          paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                            ? sourceGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
+                              (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.yearlyTotal)
+                            : sourceGroup.yearlyTotal,
+                          displayCurrency
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* List of payments for this source */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-[#4e5c6f] mb-2 font-medium">Recurring Payments:</p>
+                    <div className="text-sm space-y-2">
+                      {sourceGroup.payments.map((payment, idx) => {
+                        // Find converted amount in display currency
+                        const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
+                        
+                        return (
+                          <div key={idx} className="flex justify-between items-center p-2 hover:bg-[#f9f9f9] rounded-lg">
+                            <div className="flex items-center">
+                              <CurrencyDollarIcon className="w-4 h-4 mr-2 text-[#e06c00]" />
+                              <span className="text-[#303030]">{payment.name}</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium text-[#303030]">
+                                {formatCurrency(payment.amount, payment.currency)}
+                              </div> 
+                              {displayCurrency !== payment.currency && displayAmount && (
+                                <div className="text-xs text-[#4e5c6f]">
+                                  {formatCurrency(displayAmount, displayCurrency)}
+                                </div>
+                              )}
+                              <div className="text-xs text-[#4e5c6f] flex items-center justify-end mt-1">
+                                <ArrowPathIcon className="w-3 h-3 mr-1" />
+                                {formatFrequency(payment.frequency)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[#4e5c6f] py-4 text-center">No payment sources with recurring payments found.</p>
+          )
+        ) : activeBreakdownTab === 'categories' ? (
+          // By Categories Tab (new content)
+          calculatePaymentsByCategory().length > 0 ? (
+            <div className="space-y-5">
+              {calculatePaymentsByCategory().map((categoryGroup, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="flex justify-between items-center mb-3">
+                    <h5 className="font-medium text-[#303030] flex items-center">
+                      <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                      {categoryGroup.category}
+                    </h5>
+                    <span className="text-sm bg-[#fff0e6] px-2 py-1 rounded-full text-[#e06c00] font-medium">
+                      {categoryGroup.count} payment{categoryGroup.count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                      <p className="text-[#4e5c6f] mb-1">Monthly Total</p>
+                      <p className="font-semibold text-[#303030]">
+                        {formatCurrency(
+                          // Convert USD amount to display currency
+                          paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                            ? categoryGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
+                              (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? categoryGroup.monthlyTotal)
+                            : categoryGroup.monthlyTotal,
+                          displayCurrency
+                        )}
+                      </p>
+                    </div>
+                    <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                      <p className="text-[#4e5c6f] mb-1">Yearly Total</p>
+                      <p className="font-semibold text-[#303030]">
+                        {formatCurrency(
+                          // Convert USD amount to display currency
+                          paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                            ? categoryGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
+                              (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? categoryGroup.yearlyTotal)
+                            : categoryGroup.yearlyTotal,
+                          displayCurrency
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* List of payments for this category */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-[#4e5c6f] mb-2 font-medium">Recurring Payments:</p>
+                    <div className="text-sm space-y-2">
+                      {categoryGroup.payments.map((payment, idx) => {
+                        // Find converted amount in display currency
+                        const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
+                        // Find payment source
+                        const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
+                        
+                        return (
+                          <div key={idx} className="flex justify-between items-center p-2 hover:bg-[#f9f9f9] rounded-lg">
+                            <div className="flex items-center">
+                              <CurrencyDollarIcon className="w-4 h-4 mr-2 text-[#e06c00]" />
+                              <span className="text-[#303030]">{payment.name}</span>
+                              {paymentSource && (
+                                <span className="text-xs text-[#4e5c6f] ml-2">
+                                  ({paymentSource.type === 'bank_account' ? 'Bank' : 'Card'}: {paymentSource.name})
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium text-[#303030]">
+                                {formatCurrency(payment.amount, payment.currency)}
+                              </div> 
+                              {displayCurrency !== payment.currency && displayAmount && (
+                                <div className="text-xs text-[#4e5c6f]">
+                                  {formatCurrency(displayAmount, displayCurrency)}
+                                </div>
+                              )}
+                              <div className="text-xs text-[#4e5c6f] flex items-center justify-end mt-1">
+                                <ArrowPathIcon className="w-3 h-3 mr-1" />
+                                {formatFrequency(payment.frequency)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[#4e5c6f] py-4 text-center">No categorized payments found.</p>
+          )
+        ) : (
+          // Upcoming Payments Tab (new content)
+          calculateUpcomingPayments().length > 0 ? (
+            <div className="space-y-4">
+              <p className="text-sm text-[#4e5c6f]">Showing payments due in the next 4 weeks</p>
+              
+              {calculateUpcomingPayments().map((upcomingPayment, index) => {
+                // Find converted amount in display currency
+                const displayAmount = paymentsInDisplayCurrency.find(
+                  p => p.id === upcomingPayment.payment.id
+                )?.amount;
+                
+                // Determine urgency class based on days until due
+                let urgencyClass = 'bg-green-50 text-green-700';
+                if (upcomingPayment.daysUntilDue <= 3) {
+                  urgencyClass = 'bg-red-50 text-red-700';
+                } else if (upcomingPayment.daysUntilDue <= 7) {
+                  urgencyClass = 'bg-orange-50 text-orange-700';
+                }
+                
+                return (
+                  <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <h5 className="font-medium text-[#303030] flex items-center">
+                        <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                        {upcomingPayment.payment.name}
+                      </h5>
+                      <span className={`text-sm px-2 py-1 rounded-full font-medium ${urgencyClass}`}>
+                        {upcomingPayment.daysUntilDue === 0 
+                          ? 'Due today' 
+                          : upcomingPayment.daysUntilDue === 1 
+                            ? 'Due tomorrow' 
+                            : `Due in ${upcomingPayment.daysUntilDue} days`}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Amount</p>
+                        <p className="font-semibold text-[#303030]">
+                          {formatCurrency(upcomingPayment.payment.amount, upcomingPayment.payment.currency)}
+                          {displayCurrency !== upcomingPayment.payment.currency && displayAmount && (
+                            <span className="block text-xs font-normal text-[#4e5c6f] mt-1">
+                              {formatCurrency(displayAmount, displayCurrency)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Due Date</p>
+                        <p className="font-medium text-[#303030]">
+                          {upcomingPayment.dueDate.toLocaleDateString('en-US', { 
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Payment Source</p>
+                        <p className="font-medium text-[#303030]">
+                          {upcomingPayment.paymentSource ? (
+                            <>
+                              {upcomingPayment.paymentSource.name}
+                              <span className="text-[#e06c00] ml-1 block text-xs">
+                                {upcomingPayment.paymentSource.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                                •••• {upcomingPayment.paymentSource.identifier}
+                              </span>
+                            </>
+                          ) : (
+                            'Unknown source'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Additional details */}
+                    <div className="mt-3 pt-3 border-t border-gray-100 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center">
+                        <span className="text-[#4e5c6f] mr-2">Category:</span>
+                        <span className="text-[#303030]">{upcomingPayment.payment.category || 'Uncategorized'}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-[#4e5c6f] mr-2">Frequency:</span>
+                        <span className="text-[#303030] flex items-center">
+                          <ArrowPathIcon className="w-3 h-3 mr-1" />
+                          {formatFrequency(upcomingPayment.payment.frequency)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-[#4e5c6f] py-4 text-center">No upcoming payments in the next 4 weeks.</p>
+          )
+        )}
+      </div>
+    );
+  };
+
   // Determine which error to display
   const displayError = error || dataError;
 
@@ -856,111 +1330,8 @@ export default function Calendar() {
           </button>
         </div>
         
-        {/* Breakdown section */}
-        {showBreakdown && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="font-semibold mb-4 text-[#303030]">Detailed Payment Breakdown</h4>
-            
-            {isConverting ? (
-              <div className="text-center py-6">
-                <LoadingAnimation size="small" />
-                <p className="text-sm text-[#4e5c6f] mt-2">Converting currencies to {displayCurrency}...</p>
-              </div>
-            ) : calculatePaymentsBySource().length > 0 ? (
-              <div className="space-y-5">
-                {calculatePaymentsBySource().map((sourceGroup, index) => (
-                  <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center">
-                        {sourceGroup.source.type === 'bank_account' ? (
-                          <BanknotesIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
-                        ) : (
-                          <CreditCardIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
-                        )}
-                        <h5 className="font-medium text-[#303030]">{sourceGroup.source.name}</h5>
-                      </div>
-                      <span className="text-sm bg-[#fff0e6] px-2 py-1 rounded-full text-[#e06c00] font-medium">
-                        {sourceGroup.count} payment{sourceGroup.count !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
-                        <p className="text-[#4e5c6f] mb-1">Source Type</p>
-                        <p className="font-medium text-[#303030]">
-                          {sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} 
-                          <span className="text-[#e06c00] ml-1">•••• {sourceGroup.source.identifier}</span>
-                        </p>
-                      </div>
-                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
-                        <p className="text-[#4e5c6f] mb-1">Monthly Total</p>
-                        <p className="font-semibold text-[#303030]">
-                          {formatCurrency(
-                            // Convert USD amount to display currency
-                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
-                              ? sourceGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
-                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.monthlyTotal)
-                              : sourceGroup.monthlyTotal,
-                            displayCurrency
-                          )}
-                        </p>
-                      </div>
-                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
-                        <p className="text-[#4e5c6f] mb-1">Yearly Total</p>
-                        <p className="font-semibold text-[#303030]">
-                          {formatCurrency(
-                            // Convert USD amount to display currency
-                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
-                              ? sourceGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
-                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.yearlyTotal)
-                              : sourceGroup.yearlyTotal,
-                            displayCurrency
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* List of payments for this source */}
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs text-[#4e5c6f] mb-2 font-medium">Recurring Payments:</p>
-                      <div className="text-sm space-y-2">
-                        {sourceGroup.payments.map((payment, idx) => {
-                          // Find converted amount in display currency
-                          const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
-                          
-                          return (
-                            <div key={idx} className="flex justify-between items-center p-2 hover:bg-[#f9f9f9] rounded-lg">
-                              <div className="flex items-center">
-                                <CurrencyDollarIcon className="w-4 h-4 mr-2 text-[#e06c00]" />
-                                <span className="text-[#303030]">{payment.name}</span>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-medium text-[#303030]">
-                                  {formatCurrency(payment.amount, payment.currency)}
-                                </div> 
-                                {displayCurrency !== payment.currency && displayAmount && (
-                                  <div className="text-xs text-[#4e5c6f]">
-                                    {formatCurrency(displayAmount, displayCurrency)}
-                                  </div>
-                                )}
-                                <div className="text-xs text-[#4e5c6f] flex items-center justify-end mt-1">
-                                  <ArrowPathIcon className="w-3 h-3 mr-1" />
-                                  {formatFrequency(payment.frequency)}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-[#4e5c6f] py-4 text-center">No payment sources with recurring payments found.</p>
-            )}
-          </div>
-        )}
+        {/* Breakdown section - now using tabbed UI */}
+        {showBreakdown && renderBreakdownTabs()}
       </div>
 
       {displayError && (
