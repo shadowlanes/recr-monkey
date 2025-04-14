@@ -29,7 +29,7 @@ export const PAYMENT_FREQUENCIES: Record<string, PaymentFrequency> = {
 };
 
 // Supported currencies
-export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'AED'];
+export const SUPPORTED_CURRENCIES = ['USD', 'INR', 'AED', 'AUD', 'CAD', 'EUR', 'GBP', 'JPY'];
 
 // Default display currency
 export const DEFAULT_DISPLAY_CURRENCY = 'USD';
