@@ -43,6 +43,30 @@ export default function RecurringPayments() {
   });
   const [error, setError] = useState<string | null>(null);
 
+  // Add a function to get the currency symbol for a given currency code
+  const getCurrencySymbol = (currency: string) => {
+    switch (currency) {
+      case 'USD':
+        return '$';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      case 'CAD':
+        return 'C$';
+      case 'AUD':
+        return 'A$';
+      case 'JPY':
+        return '¥';
+      case 'INR':
+        return '₹';
+      case 'AED':
+        return 'د.إ';
+      default:
+        return '$';
+    }
+  };
+
   const handleAddNew = () => {
     // Check if payment sources exist first
     if (paymentSources.length === 0) {
@@ -404,7 +428,7 @@ export default function RecurringPayments() {
                       <label htmlFor="amount">Amount</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500">$</span>
+                          <span className="text-gray-500">{getCurrencySymbol(formData.currency)}</span>
                         </div>
                         <input
                           type="number"
