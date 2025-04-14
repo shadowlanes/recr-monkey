@@ -19,6 +19,7 @@ import { PaymentSourcesSection } from './components/PaymentSourcesSection';
 import { CategoriesSection } from './components/CategoriesSection';
 import { UpcomingPaymentsSection } from './components/UpcomingPaymentsSection';
 import { CalendarSection } from './components/CalendarSection';
+import { ExpenseTrendSection } from './components/ExpenseTrendSection';
 import { 
   formatFrequency,
   isToday,
@@ -63,8 +64,8 @@ export default function Calendar() {
     amount: number;
   }>>([]);
 
-  // Update the type to include 'calendar' as a valid tab
-  const [activeTab, setActiveTab] = useState<'sources' | 'categories' | 'upcoming' | 'calendar'>('calendar');
+  // Update the type to include 'trend'
+  const [activeTab, setActiveTab] = useState<'sources' | 'categories' | 'upcoming' | 'calendar' | 'trend'>('calendar');
 
   // Convert payments to USD whenever recurring payments change
   useEffect(() => {
@@ -303,6 +304,16 @@ export default function Calendar() {
             >
               Upcoming Payments
             </button>
+            <button
+              onClick={() => setActiveTab('trend')}
+              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'trend'
+                  ? 'text-[#e06c00] border-[#e06c00]'
+                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
+              }`}
+            >
+              Expense Trend
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -357,6 +368,15 @@ export default function Calendar() {
                 displayCurrency={displayCurrency}
                 paymentsInDisplayCurrency={paymentsInDisplayCurrency}
                 isConverting={isConverting}
+              />
+            )}
+            
+            {activeTab === 'trend' && (
+              <ExpenseTrendSection 
+                convertedPayments={convertedPayments}
+                paymentsInDisplayCurrency={paymentsInDisplayCurrency}
+                displayCurrency={displayCurrency}
+                formatCurrency={formatCurrency}
               />
             )}
           </div>
