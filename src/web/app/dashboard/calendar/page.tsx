@@ -20,10 +20,11 @@ import { CategoriesSection } from './components/CategoriesSection';
 import { UpcomingPaymentsSection } from './components/UpcomingPaymentsSection';
 import { CalendarSection } from './components/CalendarSection';
 import { 
-  getAllPaymentDatesForDay,
   formatFrequency,
   isToday,
-  formatCurrency
+  formatCurrency,
+  generateMonthCalendarData,
+  generateYearCalendarData
 } from './calendar-utils';
 
 // View mode types
@@ -147,107 +148,12 @@ export default function Calendar() {
 
   // Generate month calendar
   const generateMonthCalendar = useCallback(() => {
-    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    const firstDayOfWeek = firstDay.getDay();
-    
-    const days: Array<{ date: Date | null, payments: PaymentDateItem[] }> = [];
-    
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push({ date: null, payments: [] });
-    }
-    
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-      days.push({ date, payments: [] });
-    }
-    
-    if (recurringPayments.length > 0) {
-      days.forEach(day => {
-        if (!day.date) return;
-        
-        recurringPayments.forEach(payment => {
-          const paymentDates = getAllPaymentDatesForDay(payment, day.date!);
-          
-          paymentDates.forEach(paymentDate => {
-            const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
-            
-            day.payments.push({
-              date: paymentDate,
-              payment,
-              paymentSource
-            });
-          });
-        });
-        
-        day.payments.sort((a, b) => b.payment.amount - a.payment.amount);
-      });
-    }
-    
-    setCalendarDays(days);
+    setCalendarDays(generateMonthCalendarData(currentDate, recurringPayments, paymentSources));
   }, [currentDate, recurringPayments, paymentSources]);
 
   // Generate year calendar
   const generateYearCalendar = useCallback(() => {
-    const monthsCalendar: Array<Array<{ date: Date | null, payments: PaymentDateItem[] }>> = [];
-    
-    for (let month = 0; month < 12; month++) {
-      // Create a new date for each month of the current year
-      const monthDate = new Date(currentDate.getFullYear(), month, 1);
-      
-      // Get first day of the month
-      const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      // Get last day of the month
-      const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-      
-      // Get day of week for first day (0 = Sunday, 6 = Saturday)
-      const firstDayOfWeek = firstDay.getDay();
-      
-      const days: Array<{ date: Date | null, payments: PaymentDateItem[] }> = [];
-      
-      // Add empty slots for days before the first day of the month
-      for (let i = 0; i < firstDayOfWeek; i++) {
-        days.push({ date: null, payments: [] });
-      }
-      
-      // Add all days of the month
-      for (let i = 1; i <= lastDay.getDate(); i++) {
-        const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), i);
-        days.push({ date, payments: [] });
-      }
-      
-      // Calculate payments for each day
-      if (recurringPayments.length > 0) {
-        // For each day in the calendar
-        days.forEach(day => {
-          if (!day.date) return;
-          
-          // For each recurring payment
-          recurringPayments.forEach(payment => {
-            // Get all payment occurrences for this day in the month
-            const paymentDates = getAllPaymentDatesForDay(payment, day.date!);
-            
-            // Add each payment occurrence to the day
-            paymentDates.forEach(paymentDate => {
-              const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
-              
-              day.payments.push({
-                date: paymentDate,
-                payment,
-                paymentSource
-              });
-            });
-          });
-          
-          // Sort payments by amount (highest first)
-          day.payments.sort((a, b) => b.payment.amount - a.payment.amount);
-        });
-      }
-      
-      monthsCalendar.push(days);
-    }
-    
-    setYearCalendar(monthsCalendar);
+    setYearCalendar(generateYearCalendarData(currentDate, recurringPayments, paymentSources));
   }, [currentDate, recurringPayments, paymentSources]);
 
   // Update calendar when current date or view mode changes

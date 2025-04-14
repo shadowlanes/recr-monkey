@@ -116,7 +116,71 @@ export const formatCurrency = (amount: number, currency: string): string => {
   }).format(amount);
 };
 
+interface CalendarDay {
+  date: Date | null;
+  payments: PaymentDateItem[];
+}
 
-
-
+export const generateMonthCalendarData = (
+  currentDate: Date,
+  recurringPayments: RecurringPayment[],
+  paymentSources: any[]
+): CalendarDay[] => {
+  const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const firstDayOfWeek = firstDay.getDay();
   
+  const days: CalendarDay[] = [];
+  
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    days.push({ date: null, payments: [] });
+  }
+  
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+    days.push({ date, payments: [] });
+  }
+  
+  if (recurringPayments.length > 0) {
+    days.forEach(day => {
+      if (!day.date) return;
+      
+      recurringPayments.forEach(payment => {
+        const paymentDates = getAllPaymentDatesForDay(payment, day.date!);
+        
+        paymentDates.forEach(paymentDate => {
+          const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
+          
+          day.payments.push({
+            date: paymentDate,
+            payment,
+            paymentSource
+          });
+        });
+      });
+      
+      day.payments.sort((a, b) => b.payment.amount - a.payment.amount);
+    });
+  }
+  
+  return days;
+};
+
+export const generateYearCalendarData = (
+  currentDate: Date,
+  recurringPayments: RecurringPayment[],
+  paymentSources: any[]
+): CalendarDay[][] => {
+  const monthsCalendar: CalendarDay[][] = [];
+  
+  for (let month = 0; month < 12; month++) {
+    const monthDate = new Date(currentDate.getFullYear(), month, 1);
+    monthsCalendar.push(generateMonthCalendarData(monthDate, recurringPayments, paymentSources));
+  }
+  
+  return monthsCalendar;
+};
+
+
+
+
