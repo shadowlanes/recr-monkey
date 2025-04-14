@@ -14,7 +14,8 @@ import {
   BanknotesIcon,
   CreditCardIcon,
   ArrowPathIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 
 export default function RecurringPayments() {
@@ -39,7 +40,8 @@ export default function RecurringPayments() {
     currency: 'USD',
     frequency: PAYMENT_FREQUENCIES.MONTHLY,
     payment_source_id: '',
-    start_date: new Date().toISOString().split('T')[0]
+    start_date: new Date().toISOString().split('T')[0],
+    category: 'Other' // Default category
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +82,8 @@ export default function RecurringPayments() {
       currency: 'USD',
       frequency: PAYMENT_FREQUENCIES.MONTHLY,
       payment_source_id: paymentSources[0]?.id || '',
-      start_date: new Date().toISOString().split('T')[0]
+      start_date: new Date().toISOString().split('T')[0],
+      category: 'Other' // Default category
     });
     setModalMode('add');
     setCurrentPayment(null);
@@ -94,7 +97,8 @@ export default function RecurringPayments() {
       currency: payment.currency,
       frequency: payment.frequency,
       payment_source_id: payment.payment_source_id,
-      start_date: payment.start_date
+      start_date: payment.start_date,
+      category: payment.category || 'Other' // Set category from payment or default
     });
     setModalMode('edit');
     setCurrentPayment(payment);
@@ -140,7 +144,8 @@ export default function RecurringPayments() {
           currency: formData.currency,
           frequency: formData.frequency,
           payment_source_id: formData.payment_source_id,
-          start_date: formData.start_date
+          start_date: formData.start_date,
+          category: formData.category
         });
         
         if (result) {
@@ -154,7 +159,8 @@ export default function RecurringPayments() {
           currency: formData.currency,
           frequency: formData.frequency,
           payment_source_id: formData.payment_source_id,
-          start_date: formData.start_date
+          start_date: formData.start_date,
+          category: formData.category
         });
         
         if (result) {
@@ -332,6 +338,11 @@ export default function RecurringPayments() {
                     {formatFrequency(payment.frequency)}
                   </span>
                 </div>
+                {/* Add category display */}
+                <div className="flex items-center mb-2 text-xs text-[#4e5c6f]">
+                  <TagIcon className="w-4 h-4 mr-1" />
+                  <span>{payment.category || 'Other'}</span>
+                </div>
                 <div className="flex items-center">
                   {paymentSources.find(s => s.id === payment.payment_source_id)?.type === 'bank_account' ? (
                     <BanknotesIcon className="w-4 h-4 mr-2 text-[#4e5c6f]" />
@@ -421,6 +432,36 @@ export default function RecurringPayments() {
                       required
                       className="focus:border-[#e06c00]"
                     />
+                  </div>
+                  
+                  {/* Add Category field after name */}
+                  <div className="form-group">
+                    <label htmlFor="category">Category</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <TagIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <select
+                        id="category"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleInputChange}
+                        required
+                        className="pl-10"
+                      >
+                        <option value="Subscription">Subscription</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Mortgage/Rent">Mortgage/Rent</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Health">Health</option>
+                        <option value="Education">Education</option>
+                        <option value="Savings">Savings</option>
+                        <option value="Debt">Debt</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">

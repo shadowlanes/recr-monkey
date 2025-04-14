@@ -1034,6 +1034,9 @@ export default function Calendar() {
               </>
             )}
             
+            <span className="font-medium text-[#4e5c6f]">Category:</span>
+            <span className="text-[#303030]">{hoverPayment.paymentItem.payment.category || 'Other'}</span>
+            
             <span className="font-medium text-[#4e5c6f]">Frequency:</span> 
             <span className="text-[#303030]">{formatFrequency(hoverPayment.paymentItem.payment.frequency)}</span>
             

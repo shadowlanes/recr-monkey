@@ -180,7 +180,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           currency: updatedPayment.currency,
           frequency: updatedPayment.frequency,
           payment_source_id: updatedPayment.payment_source_id,
-          start_date: updatedPayment.start_date
+          start_date: updatedPayment.start_date,
+          category: updatedPayment.category // Add category
         })
         .eq('id', paymentId)
         .eq('user_id', user?.id)

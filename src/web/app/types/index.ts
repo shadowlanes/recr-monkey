@@ -18,6 +18,7 @@ export interface RecurringPayment {
   frequency: 'weekly' | 'monthly' | '4weeks' | 'yearly';
   payment_source_id: string;
   start_date: string;
+  category: string; // Add new category field
   created_at?: string;
 }
 
