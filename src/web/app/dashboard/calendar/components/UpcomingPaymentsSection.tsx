@@ -182,7 +182,7 @@ export function UpcomingPaymentsSection({
                   <span className="text-[#4e5c6f] mr-2">Category:</span>
                   <span className="text-[#303030]">{upcomingPayment.payment.category || 'Uncategorized'}</span>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center justify-end">
                   <span className="text-[#4e5c6f] mr-2">Frequency:</span>
                   <span className="text-[#303030] flex items-center">
                     <ArrowPathIcon className="w-3 h-3 mr-1" />
