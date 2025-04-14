@@ -10,7 +10,7 @@ interface UpcomingPaymentsSectionProps {
   paymentSources: {
     id: string;
     name: string;
-    type: 'bank_account' | 'card';
+    type: 'bank_account' | 'debit_card' | 'credit_card';
     identifier: string;
   }[];
   displayCurrency: string;
@@ -102,6 +102,19 @@ export function UpcomingPaymentsSection({
 
   const upcomingPayments = calculateUpcomingPayments();
 
+  const getSourceTypeDisplay = (type: string) => {
+    switch (type) {
+      case 'bank_account':
+        return 'Bank Account';
+      case 'debit_card':
+        return 'Debit Card';
+      case 'credit_card':
+        return 'Credit Card';
+      default:
+        return 'Unknown';
+    }
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-[#4e5c6f]">Showing payments due in the next 4 weeks</p>
@@ -166,7 +179,7 @@ export function UpcomingPaymentsSection({
                       <>
                         {upcomingPayment.paymentSource.name}
                         <span className="text-[#e06c00] ml-1 block text-xs">
-                          {upcomingPayment.paymentSource.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                          {getSourceTypeDisplay(upcomingPayment.paymentSource.type)} 
                           •••• {upcomingPayment.paymentSource.identifier}
                         </span>
                       </>

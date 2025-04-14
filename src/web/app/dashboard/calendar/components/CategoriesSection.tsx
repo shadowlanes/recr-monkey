@@ -1,7 +1,7 @@
 'use client';
 
 import { CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { PaymentWithConversion } from '../types';
+import { PaymentWithConversion } from '../../../types';
 import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
 import { useMemo } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';

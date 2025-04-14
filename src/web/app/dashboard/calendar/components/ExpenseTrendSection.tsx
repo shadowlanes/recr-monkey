@@ -11,7 +11,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { PaymentWithConversion } from '../page';
+import { PaymentWithConversion } from '../../../types';
 import { getAllPaymentDatesForDay } from '../calendar-utils';
 import { useState, useMemo } from 'react';
 import { getCategoryColor } from '../../../lib/categoryColors';

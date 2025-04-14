@@ -2,7 +2,7 @@
 
 import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { useCallback } from 'react';
-import { PaymentWithConversion } from '../page';
+import { PaymentWithConversion } from '../../../types';
 
 interface PaymentSummaryProps {
   recurringPaymentsCount: number;

@@ -18,8 +18,13 @@ export interface RecurringPayment {
   frequency: 'weekly' | 'monthly' | '4weeks' | 'yearly';
   payment_source_id: string;
   start_date: string;
-  category: string; // Add new category field
+  category: string;
   created_at?: string;
+}
+
+// Type for a recurring payment with USD conversion
+export interface PaymentWithConversion extends RecurringPayment {
+  amountInUSD: number;
 }
 
 // Type for payment dates with reference to payment and source

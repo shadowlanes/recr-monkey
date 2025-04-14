@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { BanknotesIcon, CreditCardIcon, CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { PaymentWithConversion } from '../types';
+import { PaymentWithConversion, PaymentSource } from '../../../types';
 import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
@@ -12,12 +12,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface PaymentSourcesSectionProps {
   convertedPayments: PaymentWithConversion[];
-  paymentSources: Array<{
-    id: string;
-    name: string;
-    type: 'bank_account' | 'card';
-    identifier: string;
-  }>;
+  paymentSources: PaymentSource[];
   displayCurrency: string;
   paymentsInDisplayCurrency: Array<{ id: string; amount: number; }>;
   formatCurrency: (amount: number, currency: string) => string;
@@ -201,7 +196,9 @@ export function PaymentSourcesSection({
               <div className="bg-[#f9f9f9] p-3 rounded-lg">
                 <p className="text-[#4e5c6f] mb-1">Source Type</p>
                 <p className="font-medium text-[#303030]">
-                  {sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                  {sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 
+                   sourceGroup.source.type === 'debit_card' ? 'Debit Card' : 
+                   'Credit Card'} 
                   <span className="text-[#e06c00] ml-1">•••• {sourceGroup.source.identifier}</span>
                 </p>
               </div>
