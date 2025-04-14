@@ -13,17 +13,15 @@ export default function AuthForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showMagicLink, setShowMagicLink] = useState(false);
+  const [showConfirmationMessage, setShowConfirmationMessage] = useState(false); // Added state
   const { signIn, signUp, error: authError, sendMagicLink } = useAuth();
 
-  const toggleForm = () => {
-    setIsLogin(!isLogin);
-    setFormError(null);
-    setShowMagicLink(false);
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setShowConfirmationMessage(false); // Reset confirmation message on new submit
     setIsLoading(true);
 
     try {
@@ -41,6 +39,8 @@ export default function AuthForm() {
           return;
         }
         await signUp(email, password);
+        // Show confirmation message after successful sign up
+        setShowConfirmationMessage(true);
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -51,6 +51,7 @@ export default function AuthForm() {
 
   const toggleMagicLink = () => {
     setShowMagicLink(!showMagicLink);
+    setShowConfirmationMessage(false); // Reset confirmation message
   };
 
   return (
@@ -58,21 +59,29 @@ export default function AuthForm() {
       <div className="tabs flex border-b border-gray-200 mb-4">
         <button 
           className={`tab-btn px-4 py-2 font-medium ${isLogin ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`} 
-          onClick={() => setIsLogin(true)}
+          onClick={() => { setIsLogin(true); setShowConfirmationMessage(false); }} // Reset on tab click
         >
           Login
         </button>
         <button 
           className={`tab-btn px-4 py-2 font-medium ${!isLogin ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`} 
-          onClick={() => setIsLogin(false)}
+          onClick={() => { setIsLogin(false); setShowConfirmationMessage(false); }} // Reset on tab click
         >
           Sign Up
         </button>
       </div>
       
-      {(formError || authError) && (
+      {/* Error Message */}
+      {(formError || authError) && !showConfirmationMessage && ( // Hide error if confirmation is shown
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
           {formError || authError}
+        </div>
+      )}
+
+      {/* Confirmation Message */}
+      {showConfirmationMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+          Sign up successful! Please check your email ({email}) for a confirmation link. Once confirmed, you can log in.
         </div>
       )}
       
@@ -97,7 +106,7 @@ export default function AuthForm() {
               id="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
+              required={!isLogin || !showMagicLink} // Password required for signup or password login
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
@@ -111,7 +120,7 @@ export default function AuthForm() {
               id="confirm-password" 
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              required
+              required={!isLogin && !showMagicLink} // Confirm password required for signup
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
@@ -145,8 +154,8 @@ export default function AuthForm() {
         
         <button 
           type="submit" 
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          disabled={isLoading}
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          disabled={isLoading || showConfirmationMessage} // Disable button while loading or after confirmation
         >
           {isLoading ? (
             <div className="flex justify-center items-center">

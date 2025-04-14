@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '../../components/auth/auth-provider';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  supabase, 
-  TABLES, 
   PAYMENT_FREQUENCIES, 
   convertToUSD, 
   convertCurrency,
   getDisplayCurrency
 } from '../../lib/supabase';
-import { RecurringPayment, PaymentSource, PaymentDateItem } from '../../types';
+import { PaymentDateItem, RecurringPayment } from '../../types';
+import { useData } from '../../contexts/data-context';
 import LoadingAnimation from '../../components/loading-animation';
 import {
   ChevronLeftIcon,
@@ -36,12 +34,15 @@ interface PaymentWithConversion extends RecurringPayment {
 }
 
 export default function Calendar() {
-  const { user } = useAuth();
   const router = useRouter();
-  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
-  const [convertedPayments, setConvertedPayments] = useState<PaymentWithConversion[]>([]);
-  const [paymentSources, setPaymentSources] = useState<PaymentSource[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use centralized data context
+  const { 
+    recurringPayments, 
+    paymentSources, 
+    isLoading,
+    error: dataError
+  } = useData();
+  
   const [isConverting, setIsConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -52,6 +53,7 @@ export default function Calendar() {
     paymentItem: PaymentDateItem;
     position: { x: number; y: number };
   } | null>(null);
+  const [convertedPayments, setConvertedPayments] = useState<PaymentWithConversion[]>([]);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   // State for display currency
@@ -63,47 +65,8 @@ export default function Calendar() {
     amount: number;
   }>>([]);
 
-  // Load data from Supabase
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      // Load payment sources
-      const { data: sourcesData, error: sourcesError } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .select('*')
-        .eq('user_id', user?.id);
-        
-      if (sourcesError) throw sourcesError;
-      setPaymentSources(sourcesData || []);
-      
-      // Load recurring payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .select('*')
-        .eq('user_id', user?.id);
-        
-      if (paymentsError) throw paymentsError;
-      setRecurringPayments(paymentsData || []);
-      
-      // Check if user has payment sources but no recurring payments
-      // If so, redirect to onboarding page
-      if ((sourcesData && sourcesData.length > 0) && 
-          (!paymentsData || paymentsData.length === 0)) {
-        router.push('/dashboard/onboarding');
-      }
-      
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Error loading data:', errorMessage);
-      setError('Failed to load data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, router]);
-
-  // Convert payments to USD
-  useEffect(() => {
+  // Convert payments to USD whenever recurring payments change
+  useMemo(async () => {
     const convertPaymentAmounts = async () => {
       if (recurringPayments.length === 0) return;
       
@@ -133,7 +96,7 @@ export default function Calendar() {
   }, [recurringPayments]);
 
   // Listen for currency change events
-  useEffect(() => {
+  useMemo(() => {
     const handleCurrencyChange = (event: Event) => {
       const customEvent = event as CustomEvent;
       const newCurrency = customEvent.detail;
@@ -148,7 +111,7 @@ export default function Calendar() {
   }, []);
 
   // Convert payments to display currency when currency changes or payments are loaded
-  useEffect(() => {
+  useMemo(async () => {
     const convertToDisplayCurrency = async () => {
       if (convertedPayments.length === 0) return;
       
@@ -181,6 +144,109 @@ export default function Calendar() {
     
     convertToDisplayCurrency();
   }, [convertedPayments, displayCurrency]);
+
+  // Get all payment occurrences for a day
+  const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
+    const paymentDates: Date[] = [];
+    const startDate = new Date(payment.start_date);
+    
+    // If start date is after the target day's month/year, no payments yet
+    if (startDate.getFullYear() > dayDate.getFullYear() || 
+        (startDate.getFullYear() === dayDate.getFullYear() && 
+         startDate.getMonth() > dayDate.getMonth())) {
+      return paymentDates;
+    }
+    
+    // Check if there's a payment on this day based on the frequency
+    switch (payment.frequency) {
+      case PAYMENT_FREQUENCIES.WEEKLY: {
+        // Find the first occurrence in or before this month
+        const currentDate = new Date(startDate);
+        while (currentDate.getFullYear() < dayDate.getFullYear() || 
+               (currentDate.getFullYear() === dayDate.getFullYear() && 
+                currentDate.getMonth() < dayDate.getMonth())) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        }
+        
+        // Go back one occurrence to ensure we don't miss the first one in this month
+        currentDate.setDate(currentDate.getDate() - 7);
+        
+        // Check all weekly occurrences in this month
+        while (currentDate.getFullYear() <= dayDate.getFullYear() && 
+               currentDate.getMonth() <= dayDate.getMonth()) {
+          // Move to next occurrence
+          currentDate.setDate(currentDate.getDate() + 7);
+          
+          // If this occurrence is in the correct month and day, add it
+          if (currentDate.getMonth() === dayDate.getMonth() && 
+              currentDate.getFullYear() === dayDate.getFullYear() && 
+              currentDate.getDate() === dayDate.getDate()) {
+            paymentDates.push(new Date(currentDate));
+          }
+        }
+        break;
+      }
+      
+      case PAYMENT_FREQUENCIES.MONTHLY: {
+        // For monthly payments, just check if the day of the month matches
+        if (startDate.getDate() === dayDate.getDate()) {
+          // Create a date for this monthly payment in the current view month
+          const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+          
+          // Only add if the payment date is on or after the start date
+          if (paymentDate >= startDate) {
+            paymentDates.push(paymentDate);
+          }
+        }
+        break;
+      }
+      
+      case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
+        // Similar to weekly but with 28-day intervals
+        const currentDate = new Date(startDate);
+        while (currentDate.getFullYear() < dayDate.getFullYear() || 
+               (currentDate.getFullYear() === dayDate.getFullYear() && 
+                currentDate.getMonth() < dayDate.getMonth())) {
+          currentDate.setDate(currentDate.getDate() + 28);
+        }
+        
+        // Go back one occurrence to ensure we don't miss the first one in this month
+        currentDate.setDate(currentDate.getDate() - 28);
+        
+        // Check all 4-week occurrences in this month
+        while (currentDate.getFullYear() <= dayDate.getFullYear() && 
+               currentDate.getMonth() <= dayDate.getMonth()) {
+          // Move to next occurrence
+          currentDate.setDate(currentDate.getDate() + 28);
+          
+          // If this occurrence is in the correct month and day, add it
+          if (currentDate.getMonth() === dayDate.getMonth() && 
+              currentDate.getFullYear() === dayDate.getFullYear() && 
+              currentDate.getDate() === dayDate.getDate()) {
+            paymentDates.push(new Date(currentDate));
+          }
+        }
+        break;
+      }
+      
+      case PAYMENT_FREQUENCIES.YEARLY: {
+        // For yearly payments, check if the month and day match
+        if (startDate.getDate() === dayDate.getDate() && 
+            startDate.getMonth() === dayDate.getMonth()) {
+          // Create a date for this yearly payment in the current view year
+          const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+          
+          // Only add if the payment date is on or after the start date
+          if (paymentDate >= startDate) {
+            paymentDates.push(paymentDate);
+          }
+        }
+        break;
+      }
+    }
+    
+    return paymentDates;
+  };
 
   // Generate month calendar
   const generateMonthCalendar = useCallback(() => {
@@ -299,123 +365,13 @@ export default function Calendar() {
     setYearCalendar(monthsCalendar);
   }, [currentDate, recurringPayments, paymentSources]);
 
-  // Load data when component mounts
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user, loadData]);
-
   // Update calendar when current date or view mode changes
-  useEffect(() => {
+  useMemo(() => {
     // Always generate both month and year data regardless of the current view mode
     // This ensures yearly totals are calculated correctly even when starting in month view
     generateMonthCalendar();
     generateYearCalendar();
-  }, [currentDate, viewMode, recurringPayments, paymentSources, generateMonthCalendar, generateYearCalendar]);
-
-  // Get all payment occurrences for a day
-  const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
-    const paymentDates: Date[] = [];
-    const startDate = new Date(payment.start_date);
-    
-    // If start date is after the target day's month/year, no payments yet
-    if (startDate.getFullYear() > dayDate.getFullYear() || 
-        (startDate.getFullYear() === dayDate.getFullYear() && 
-         startDate.getMonth() > dayDate.getMonth())) {
-      return paymentDates;
-    }
-    
-    // Check if there's a payment on this day based on the frequency
-    switch (payment.frequency) {
-      case PAYMENT_FREQUENCIES.WEEKLY: {
-        // Find the first occurrence in or before this month
-        const currentDate = new Date(startDate);
-        while (currentDate.getFullYear() < dayDate.getFullYear() || 
-               (currentDate.getFullYear() === dayDate.getFullYear() && 
-                currentDate.getMonth() < dayDate.getMonth())) {
-          currentDate.setDate(currentDate.getDate() + 7);
-        }
-        
-        // Go back one occurrence to ensure we don't miss the first one in this month
-        currentDate.setDate(currentDate.getDate() - 7);
-        
-        // Check all weekly occurrences in this month
-        while (currentDate.getFullYear() <= dayDate.getFullYear() && 
-               currentDate.getMonth() <= dayDate.getMonth()) {
-          // Move to next occurrence
-          currentDate.setDate(currentDate.getDate() + 7);
-          
-          // If this occurrence is in the correct month and day, add it
-          if (currentDate.getMonth() === dayDate.getMonth() && 
-              currentDate.getFullYear() === dayDate.getFullYear() && 
-              currentDate.getDate() === dayDate.getDate()) {
-            paymentDates.push(new Date(currentDate));
-          }
-        }
-        break;
-      }
-      
-      case PAYMENT_FREQUENCIES.MONTHLY: {
-        // For monthly payments, just check if the day of the month matches
-        if (startDate.getDate() === dayDate.getDate()) {
-          // Create a date for this monthly payment in the current view month
-          const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
-          
-          // Only add if the payment date is on or after the start date
-          if (paymentDate >= startDate) {
-            paymentDates.push(paymentDate);
-          }
-        }
-        break;
-      }
-      
-      case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
-        // Similar to weekly but with 28-day intervals
-        const currentDate = new Date(startDate);
-        while (currentDate.getFullYear() < dayDate.getFullYear() || 
-               (currentDate.getFullYear() === dayDate.getFullYear() && 
-                currentDate.getMonth() < dayDate.getMonth())) {
-          currentDate.setDate(currentDate.getDate() + 28);
-        }
-        
-        // Go back one occurrence to ensure we don't miss the first one in this month
-        currentDate.setDate(currentDate.getDate() - 28);
-        
-        // Check all 4-week occurrences in this month
-        while (currentDate.getFullYear() <= dayDate.getFullYear() && 
-               currentDate.getMonth() <= dayDate.getMonth()) {
-          // Move to next occurrence
-          currentDate.setDate(currentDate.getDate() + 28);
-          
-          // If this occurrence is in the correct month and day, add it
-          if (currentDate.getMonth() === dayDate.getMonth() && 
-              currentDate.getFullYear() === dayDate.getFullYear() && 
-              currentDate.getDate() === dayDate.getDate()) {
-            paymentDates.push(new Date(currentDate));
-          }
-        }
-        break;
-      }
-      
-      case PAYMENT_FREQUENCIES.YEARLY: {
-        // For yearly payments, check if the month and day match
-        if (startDate.getDate() === dayDate.getDate() && 
-            startDate.getMonth() === dayDate.getMonth()) {
-          // Create a date for this yearly payment in the current view year
-          const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
-          
-          // Only add if the payment date is on or after the start date
-          if (paymentDate >= startDate) {
-            paymentDates.push(paymentDate);
-          }
-        }
-        break;
-      }
-    }
-    
-    return paymentDates;
-  };
+  }, [generateMonthCalendar, generateYearCalendar]);
 
   // Calculate payments grouped by source with USD conversion
   const calculatePaymentsBySource = useCallback(() => {
@@ -811,6 +767,9 @@ export default function Calendar() {
     );
   };
 
+  // Determine which error to display
+  const displayError = error || dataError;
+
   return (
     <div>
       <div className="section-header flex justify-between items-center mb-6">
@@ -1004,12 +963,12 @@ export default function Calendar() {
         )}
       </div>
 
-      {error && (
+      {displayError && (
         <div className="error-message mb-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          {error}
+          {displayError}
         </div>
       )}
 

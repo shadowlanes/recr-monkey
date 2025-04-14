@@ -1,16 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
-import { supabase, TABLES, PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
+import { PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
 import { PaymentSource } from '../../types';
+import { useData } from '../../contexts/data-context';
 import LoadingAnimation from '../../components/loading-animation';
 import { PencilIcon, TrashIcon, PlusIcon, XMarkIcon, CreditCardIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 
 export default function PaymentSources() { 
   const { user } = useAuth();
-  const [paymentSources, setPaymentSources] = useState<PaymentSource[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { 
+    paymentSources, 
+    isLoading, 
+    error: contextError,
+    addPaymentSource,
+    updatePaymentSource,
+    deletePaymentSource
+  } = useData();
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'delete'>('add');
   const [currentSource, setCurrentSource] = useState<PaymentSource | null>(null);
@@ -21,33 +29,6 @@ export default function PaymentSources() {
     identifier: ''
   });
   const [error, setError] = useState<string | null>(null);
-
-  // Load payment sources
-  useEffect(() => {
-    if (user) {
-      loadPaymentSources();
-    }
-  }, [user]);
-
-  const loadPaymentSources = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('name');
-        
-      if (error) throw error;
-      
-      setPaymentSources(data || []);
-    } catch (error: any) {
-      console.error('Error loading payment sources:', error.message);
-      setError('Failed to load payment sources. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAddNew = () => {
     setFormData({
@@ -69,7 +50,7 @@ export default function PaymentSources() {
     setModalMode('edit');
     setCurrentSource(source);
     
-    // Fetch associated recurring payments
+    // Check for associated payments
     try {
       const { data, error } = await supabase
         .from(TABLES.RECURRING_PAYMENTS)
@@ -118,46 +99,21 @@ export default function PaymentSources() {
       }
 
       if (modalMode === 'add') {
-        // Add new payment source
-        const { data, error } = await supabase
-          .from(TABLES.PAYMENT_SOURCES)
-          .insert([
-            {
-              user_id: user?.id,
-              name: formData.name,
-              type: formData.type,
-              identifier: formData.identifier
-            }
-          ])
-          .select();
-          
-        if (error) throw error;
-        
-        if (data) {
-          setPaymentSources([...paymentSources, ...data]);
-        }
+        // Add new payment source using data context
+        await addPaymentSource({
+          user_id: user?.id || '',
+          name: formData.name,
+          type: formData.type,
+          identifier: formData.identifier
+        });
       } else if (modalMode === 'edit' && currentSource) {
-        // Update existing payment source
-        const { data, error } = await supabase
-          .from(TABLES.PAYMENT_SOURCES)
-          .update({
-            name: formData.name,
-            type: formData.type,
-            identifier: formData.identifier
-          })
-          .eq('id', currentSource.id)
-          .eq('user_id', user?.id)
-          .select();
-          
-        if (error) throw error;
-        
-        if (data) {
-          setPaymentSources(
-            paymentSources.map(source => 
-              source.id === currentSource.id ? data[0] : source
-            )
-          );
-        }
+        // Update existing payment source using data context
+        await updatePaymentSource({
+          ...currentSource,
+          name: formData.name,
+          type: formData.type,
+          identifier: formData.identifier
+        });
       }
       
       setIsModalOpen(false);
@@ -171,36 +127,12 @@ export default function PaymentSources() {
     if (!currentSource) return;
     
     try {
-      // Check if payment source is used by any recurring payments
-      const { data: associatedPayments, error: checkError } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .select('id, name')
-        .eq('payment_source_id', currentSource.id);
-        
-      if (checkError) throw checkError;
-      
-      if (associatedPayments && associatedPayments.length > 0) {
-        setError(`This payment source is used by ${associatedPayments.length} recurring payment(s). Please update those payments first.`);
-        return;
-      }
-
-      // Delete the payment source
-      const { error } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .delete()
-        .eq('id', currentSource.id)
-        .eq('user_id', user?.id);
-        
-      if (error) throw error;
-      
-      setPaymentSources(
-        paymentSources.filter(source => source.id !== currentSource.id)
-      );
-      
+      // Delete the payment source using data context
+      await deletePaymentSource(currentSource.id);
       setIsModalOpen(false);
     } catch (error: any) {
       console.error('Error deleting payment source:', error.message);
-      setError('Failed to delete payment source. Please try again.');
+      setError(error.message || 'Failed to delete payment source. Please try again.');
     }
   };
 
@@ -227,6 +159,9 @@ export default function PaymentSources() {
     }
   };
 
+  // Determine which error to display (context error or local error)
+  const displayError = error || contextError;
+
   return (
     <div>
       <div className="section-header flex justify-between items-center mb-6">
@@ -240,12 +175,12 @@ export default function PaymentSources() {
         </button>
       </div>
 
-      {error && !isModalOpen && (
+      {displayError && !isModalOpen && (
         <div className="error-message mb-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          {error}
+          {displayError}
         </div>
       )}
 

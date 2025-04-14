@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../components/auth/auth-provider';
-import { supabase, TABLES, PAYMENT_FREQUENCIES } from '../../lib/supabase';
-import { RecurringPayment, PaymentSource } from '../../types';
+import React, { useState } from 'react';
+import { useData } from '../../contexts/data-context';
+import { PAYMENT_FREQUENCIES } from '../../lib/supabase';
+import { RecurringPayment } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
 import { 
   PencilIcon, 
@@ -18,10 +18,19 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function RecurringPayments() {
-  const { user } = useAuth();
-  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
-  const [paymentSources, setPaymentSources] = useState<PaymentSource[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the centralized data context instead of local state
+  const { 
+    paymentSources, 
+    recurringPayments, 
+    isLoading, 
+    error: dataError,
+    addRecurringPayment,
+    updateRecurringPayment,
+    deleteRecurringPayment,
+    hasPaymentSources
+  } = useData();
+  
+  // Local UI state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'delete'>('add');
   const [currentPayment, setCurrentPayment] = useState<RecurringPayment | null>(null);
@@ -35,47 +44,9 @@ export default function RecurringPayments() {
   });
   const [error, setError] = useState<string | null>(null);
 
-  // Load data when component mounts
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Load payment sources
-      const { data: sourcesData, error: sourcesError } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('name');
-        
-      if (sourcesError) throw sourcesError;
-      setPaymentSources(sourcesData || []);
-      
-      // Load recurring payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('name');
-        
-      if (paymentsError) throw paymentsError;
-      setRecurringPayments(paymentsData || []);
-    } catch (error: any) {
-      console.error('Error loading data:', error.message);
-      setError('Failed to load data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleAddNew = () => {
     // Check if payment sources exist first
-    if (paymentSources.length === 0) {
+    if (!hasPaymentSources) {
       setError('You need to add at least one payment source before adding a recurring payment.');
       return;
     }
@@ -139,81 +110,47 @@ export default function RecurringPayments() {
       }
 
       if (modalMode === 'add') {
-        // Add new recurring payment
-        const { data, error } = await supabase
-          .from(TABLES.RECURRING_PAYMENTS)
-          .insert([
-            {
-              user_id: user?.id,
-              name: formData.name,
-              amount,
-              currency: formData.currency,
-              frequency: formData.frequency,
-              payment_source_id: formData.payment_source_id,
-              start_date: formData.start_date
-            }
-          ])
-          .select();
-          
-        if (error) throw error;
+        // Add new recurring payment using the data context
+        const result = await addRecurringPayment({
+          name: formData.name,
+          amount,
+          currency: formData.currency,
+          frequency: formData.frequency,
+          payment_source_id: formData.payment_source_id,
+          start_date: formData.start_date
+        });
         
-        if (data) {
-          setRecurringPayments([...recurringPayments, ...data]);
+        if (result) {
+          setIsModalOpen(false);
         }
       } else if (modalMode === 'edit' && currentPayment) {
-        // Update existing recurring payment
-        const { data, error } = await supabase
-          .from(TABLES.RECURRING_PAYMENTS)
-          .update({
-            name: formData.name,
-            amount,
-            currency: formData.currency,
-            frequency: formData.frequency,
-            payment_source_id: formData.payment_source_id,
-            start_date: formData.start_date
-          })
-          .eq('id', currentPayment.id)
-          .eq('user_id', user?.id)
-          .select();
-          
-        if (error) throw error;
+        // Update existing recurring payment using the data context
+        const result = await updateRecurringPayment(currentPayment.id, {
+          name: formData.name,
+          amount,
+          currency: formData.currency,
+          frequency: formData.frequency,
+          payment_source_id: formData.payment_source_id,
+          start_date: formData.start_date
+        });
         
-        if (data) {
-          setRecurringPayments(
-            recurringPayments.map(payment => 
-              payment.id === currentPayment.id ? data[0] : payment
-            )
-          );
+        if (result) {
+          setIsModalOpen(false);
         }
       }
-      
-      setIsModalOpen(false);
-    } catch (error: any) {
-      console.error('Error saving recurring payment:', error.message);
-      setError('Failed to save recurring payment. Please try again.');
+    } catch (err) {
+      console.error('Error in form submission:', err);
+      setError('An unexpected error occurred.');
     }
   };
 
   const handleDeleteConfirm = async () => {
     if (!currentPayment) return;
     
-    try {
-      const { error } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .delete()
-        .eq('id', currentPayment.id)
-        .eq('user_id', user?.id);
-        
-      if (error) throw error;
-      
-      setRecurringPayments(
-        recurringPayments.filter(payment => payment.id !== currentPayment.id)
-      );
-      
+    // Delete the recurring payment using the data context
+    const success = await deleteRecurringPayment(currentPayment.id);
+    if (success) {
       setIsModalOpen(false);
-    } catch (error: any) {
-      console.error('Error deleting recurring payment:', error.message);
-      setError('Failed to delete recurring payment. Please try again.');
     }
   };
 
@@ -294,6 +231,9 @@ export default function RecurringPayments() {
       : `Card ending in ${source.identifier}`;
   };
 
+  // Determine which error to display
+  const displayError = error || dataError;
+
   return (
     <div>
       <div className="section-header flex justify-between items-center mb-6">
@@ -307,12 +247,12 @@ export default function RecurringPayments() {
         </button>
       </div>
 
-      {error && !isModalOpen && (
+      {displayError && !isModalOpen && (
         <div className="error-message mb-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          {error}
+          {displayError}
         </div>
       )}
 

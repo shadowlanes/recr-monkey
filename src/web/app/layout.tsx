@@ -1,4 +1,5 @@
 import { AuthProvider } from './components/auth/auth-provider';
+import { DataProvider } from './contexts/data-context';
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -19,16 +20,18 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <header className="bg-white shadow-md sticky top-0 z-50">
-            <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-              <div className="logo">
-                <h1 className="text-2xl font-bold text-indigo-600">Recr-Monkey</h1>
+          <DataProvider>
+            <header className="bg-white shadow-md sticky top-0 z-50">
+              <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div className="logo">
+                  <h1 className="text-2xl font-bold text-indigo-600">Recr-Monkey</h1>
+                </div>
+                {/* Navigation will be dynamically updated based on auth state */}
+                <nav id="main-nav" className="flex gap-4"></nav>
               </div>
-              {/* Navigation will be dynamically updated based on auth state */}
-              <nav id="main-nav" className="flex gap-4"></nav>
-            </div>
-          </header>
-          <main>{children}</main>
+            </header>
+            <main>{children}</main>
+          </DataProvider>
         </AuthProvider>
       </body>
     </html>
