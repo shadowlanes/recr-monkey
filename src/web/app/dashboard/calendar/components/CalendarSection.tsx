@@ -171,15 +171,8 @@ export function CalendarSection({
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-end items-center mb-4">
         <div className="flex items-center space-x-4">
-          <button 
-            onClick={toggleViewMode}
-            className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
-          >
-            <CalendarIcon className="w-5 h-5" />
-            {viewMode === 'month' ? 'Year View' : 'Month View'}
-          </button>
           <div className="flex items-center space-x-2">
             <button 
               onClick={goToPrevious} 
@@ -199,6 +192,13 @@ export function CalendarSection({
               <ChevronRightIcon className="w-5 h-5" />
             </button>
           </div>
+          <button 
+            onClick={toggleViewMode}
+            className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
+          >
+            <CalendarIcon className="w-5 h-5" />
+            {viewMode === 'month' ? 'Year View' : 'Month View'}
+          </button>
         </div>
       </div>
       {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
