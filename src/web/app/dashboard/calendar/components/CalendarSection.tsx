@@ -1,24 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import LoadingAnimation from '../../../components/loading-animation';
 import { PaymentDateItem } from '@/app/types';
-
 
 interface CalendarSectionProps {
   viewMode: 'month' | 'year';
   currentDate: Date;
   calendarDays: Array<{ date: Date | null; payments: PaymentDateItem[] }>;
   yearCalendar: Array<Array<{ date: Date | null; payments: PaymentDateItem[] }>>;
-  handlePaymentMouseEnter: (e: React.MouseEvent, paymentItem: PaymentDateItem) => void;
-  handlePaymentMouseLeave: () => void;
-  toggleViewMode: () => void;
-  goToPrevious: () => void;
-  goToNext: () => void;
   formatViewDate: () => string;
   formatCurrency: (amount: number, currency: string) => string;
   isToday: (date: Date) => boolean;
   getMonthName: (monthIndex: number) => string;
+  toggleViewMode: () => void;
+  goToPrevious: () => void;
+  goToNext: () => void;
+  formatFrequency: (frequency: string) => string;
+  displayCurrency: string;
+  paymentsInDisplayCurrency: Array<{ id: string; amount: number }>;
+  isConverting: boolean;
 }
 
 export function CalendarSection({
@@ -26,16 +28,34 @@ export function CalendarSection({
   currentDate,
   calendarDays,
   yearCalendar,
-  handlePaymentMouseEnter,
-  handlePaymentMouseLeave,
-  toggleViewMode,
-  goToPrevious,
-  goToNext,
   formatViewDate,
   formatCurrency,
   isToday,
-  getMonthName
+  getMonthName,
+  toggleViewMode,
+  goToPrevious,
+  goToNext,
+  formatFrequency,
+  displayCurrency,
+  paymentsInDisplayCurrency,
+  isConverting
 }: CalendarSectionProps) {
+  const [hoverPayment, setHoverPayment] = useState<{
+    paymentItem: PaymentDateItem;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  const handlePaymentMouseEnter = (e: React.MouseEvent, paymentItem: PaymentDateItem) => {
+    setHoverPayment({
+      paymentItem,
+      position: { x: e.clientX, y: e.clientY }
+    });
+  };
+
+  const handlePaymentMouseLeave = () => {
+    setHoverPayment(null);
+  };
+
   const renderMonthCalendar = () => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
@@ -182,6 +202,73 @@ export function CalendarSection({
         </div>
       </div>
       {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
+
+      {/* Payment details tooltip */}
+      {hoverPayment && (
+        <div 
+          className="fixed bg-white shadow-lg rounded-lg p-4 z-50 border border-gray-200 w-72"
+          style={{
+            left: `${hoverPayment.position.x + 10}px`,
+            top: `${hoverPayment.position.y + 10}px`
+          }}
+        >
+          <div className="font-bold text-lg mb-2 text-[#303030] pb-2 border-b border-gray-100">
+            {hoverPayment.paymentItem.payment.name}
+          </div>
+          
+          <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm">
+            <span className="font-medium text-[#4e5c6f]">Amount:</span> 
+            <span className="text-[#e06c00] font-semibold">
+              {formatCurrency(hoverPayment.paymentItem.payment.amount, hoverPayment.paymentItem.payment.currency)}
+            </span>
+            
+            {/* Show converted amount if available and different from original currency */}
+            {displayCurrency !== hoverPayment.paymentItem.payment.currency && (
+              <>
+                <span className="font-medium text-[#4e5c6f]">Converted:</span>
+                <span className="text-[#4e5c6f]">
+                  {isConverting ? 'Converting...' : (
+                    <>
+                      {formatCurrency(
+                        paymentsInDisplayCurrency.find(
+                          p => p.id === hoverPayment.paymentItem.payment.id
+                        )?.amount || hoverPayment.paymentItem.payment.amount,
+                        displayCurrency
+                      )}
+                    </>
+                  )}
+                </span>
+              </>
+            )}
+            
+            <span className="font-medium text-[#4e5c6f]">Category:</span>
+            <span className="text-[#303030]">{hoverPayment.paymentItem.payment.category || 'Other'}</span>
+            
+            <span className="font-medium text-[#4e5c6f]">Frequency:</span> 
+            <span className="text-[#303030]">{formatFrequency(hoverPayment.paymentItem.payment.frequency)}</span>
+            
+            <span className="font-medium text-[#4e5c6f]">Start Date:</span> 
+            <span className="text-[#303030]">{new Date(hoverPayment.paymentItem.payment.start_date).toLocaleDateString()}</span>
+            
+            <span className="font-medium text-[#4e5c6f]">Source:</span> 
+            <span className="text-[#303030]">{hoverPayment.paymentItem.paymentSource?.name || 'Unknown'}</span>
+            
+            {hoverPayment.paymentItem.paymentSource && (
+              <>
+                <span className="font-medium text-[#4e5c6f]">Type:</span> 
+                <span className="text-[#303030]">
+                  {hoverPayment.paymentItem.paymentSource.type === 'bank_account' 
+                    ? 'Bank Account' 
+                    : 'Card'} 
+                  <span className="text-[#e06c00] ml-1">
+                    •••• {hoverPayment.paymentItem.paymentSource.identifier}
+                  </span>
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
