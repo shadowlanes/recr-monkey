@@ -4,6 +4,10 @@ import { CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { PaymentWithConversion } from '../types';
 import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
 import { useMemo } from 'react';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface CategoriesSectionProps {
   convertedPayments: PaymentWithConversion[];
@@ -84,8 +88,103 @@ export function CategoriesSection({
       .sort((a, b) => b.yearlyTotal - a.yearlyTotal);
   }, [convertedPayments]);
 
+  const chartData = useMemo(() => {
+    return {
+      labels: categoryGroups.map(group => group.category),
+      datasets: [
+        {
+          data: categoryGroups.map(group => group.yearlyTotal),
+          backgroundColor: [
+            '#FF6384',
+            '#36A2EB',
+            '#FFCE56',
+            '#4BC0C0',
+            '#9966FF',
+            '#FF9F40',
+            '#E8E8E8',
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+  }, [categoryGroups]);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right' as const,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const value = context.raw;
+            return `${context.label}: ${formatCurrency(value, displayCurrency)}`;
+          },
+        },
+      },
+    },
+  };
+
+  const categoryStats = useMemo(() => {
+    if (categoryGroups.length === 0) return null;
+    
+    const highestSpend = categoryGroups[0]; // Already sorted by yearlyTotal
+    const mostFrequent = [...categoryGroups].sort((a, b) => b.count - a.count)[0];
+    
+    // Calculate total yearly occurrences for most frequent category
+    const yearlyOccurrences = mostFrequent.payments.reduce((total, payment) => {
+      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+        return total + 12;
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+        return total + 52;
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+        return total + 13;
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+        return total + 1;
+      }
+      return total;
+    }, 0);
+    
+    return {
+      highestSpend,
+      mostFrequent,
+      yearlyOccurrences
+    };
+  }, [categoryGroups]);
+
   return (
     <div className="space-y-5">
+      {categoryGroups.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <h4 className="font-medium text-[#303030] mb-4">Spending by Category</h4>
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="h-[300px] flex-1">
+              <Pie data={chartData} options={chartOptions} />
+            </div>
+            {categoryStats && (
+              <div className="md:w-64 space-y-4 flex flex-col justify-center">
+                <div>
+                  <p className="text-sm text-[#4e5c6f] mb-1">Highest Spend Category</p>
+                  <p className="font-medium text-[#303030]">{categoryStats.highestSpend.category}</p>
+                  <p className="text-sm text-[#e06c00]">
+                    {formatCurrency(categoryStats.highestSpend.yearlyTotal, displayCurrency)}/year
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#4e5c6f] mb-1">Most Frequent Category</p>
+                  <p className="font-medium text-[#303030]">{categoryStats.mostFrequent.category}</p>
+                  <p className="text-sm text-[#e06c00]">
+                    {categoryStats.yearlyOccurrences} payments/year
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       {categoryGroups.length > 0 ? (
         categoryGroups.map((categoryGroup, index) => (
           <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
