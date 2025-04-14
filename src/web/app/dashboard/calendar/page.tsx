@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   PAYMENT_FREQUENCIES, 
@@ -66,7 +66,7 @@ export default function Calendar() {
   }>>([]);
 
   // Convert payments to USD whenever recurring payments change
-  useMemo(async () => {
+  useEffect(() => {
     const convertPaymentAmounts = async () => {
       if (recurringPayments.length === 0) return;
       
@@ -96,7 +96,7 @@ export default function Calendar() {
   }, [recurringPayments]);
 
   // Listen for currency change events
-  useMemo(() => {
+  useEffect(() => {
     const handleCurrencyChange = (event: Event) => {
       const customEvent = event as CustomEvent;
       const newCurrency = customEvent.detail;
@@ -111,7 +111,7 @@ export default function Calendar() {
   }, []);
 
   // Convert payments to display currency when currency changes or payments are loaded
-  useMemo(async () => {
+  useEffect(() => {
     const convertToDisplayCurrency = async () => {
       if (convertedPayments.length === 0) return;
       
