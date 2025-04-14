@@ -1,36 +1,100 @@
 'use client';
 
+import { useCallback } from 'react';
 import { BanknotesIcon, CreditCardIcon, CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { PaymentWithConversion } from '../types';
+import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
 
 interface PaymentSourcesSectionProps {
-  sourceGroups: Array<{
-    source: {
-      id: string;
-      name: string;
-      type: 'bank_account' | 'card';
-      identifier: string;
-    };
-    payments: PaymentWithConversion[];
-    count: number;
-    monthlyTotal: number;
-    yearlyTotal: number;
+  convertedPayments: PaymentWithConversion[];
+  paymentSources: Array<{
+    id: string;
+    name: string;
+    type: 'bank_account' | 'card';
+    identifier: string;
   }>;
   displayCurrency: string;
   paymentsInDisplayCurrency: Array<{ id: string; amount: number; }>;
-  convertedPayments: PaymentWithConversion[];
   formatCurrency: (amount: number, currency: string) => string;
   formatFrequency: (frequency: string) => string;
 }
 
 export function PaymentSourcesSection({
-  sourceGroups,
+  convertedPayments,
+  paymentSources,
   displayCurrency,
   paymentsInDisplayCurrency,
-  convertedPayments,
   formatCurrency,
   formatFrequency
 }: PaymentSourcesSectionProps) {
+  // Calculate payments grouped by source with USD conversion
+  const calculatePaymentsBySource = useCallback(() => {
+    if (convertedPayments.length === 0 || paymentSources.length === 0) {
+      return [];
+    }
+
+    // Group payments by source
+    const sourceGroups = paymentSources.map(source => {
+      const sourcePayments = convertedPayments.filter(payment => 
+        payment.payment_source_id === source.id
+      );
+      
+      // Calculate totals using converted USD amounts
+      const monthlyTotal = sourcePayments.reduce((sum, payment) => {
+        // Monthly frequency payments
+        if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+          return sum + payment.amountInUSD;
+        }
+        // Weekly frequency payments (multiply by average weeks in a month)
+        else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+          return sum + (payment.amountInUSD * 4.33);
+        }
+        // Every 4 weeks (slightly different than monthly)
+        else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+          return sum + (payment.amountInUSD * 1.08); // 13 payments per year instead of 12
+        }
+        // Yearly frequency payments (divide by 12 for monthly equivalent)
+        else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+          return sum + (payment.amountInUSD / 12);
+        }
+        return sum;
+      }, 0);
+
+      const yearlyTotal = sourcePayments.reduce((sum, payment) => {
+        // Monthly frequency payments
+        if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+          return sum + (payment.amountInUSD * 12);
+        }
+        // Weekly frequency payments
+        else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+          return sum + (payment.amountInUSD * 52);
+        }
+        // Every 4 weeks
+        else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+          return sum + (payment.amountInUSD * 13);
+        }
+        // Yearly frequency payments
+        else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+          return sum + payment.amountInUSD;
+        }
+        return sum;
+      }, 0);
+
+      return {
+        source,
+        payments: sourcePayments,
+        count: sourcePayments.length,
+        monthlyTotal,
+        yearlyTotal
+      };
+    }).filter(group => group.payments.length > 0); // Remove sources with no payments
+
+    // Sort by yearly total (highest first)
+    return sourceGroups.sort((a, b) => b.yearlyTotal - a.yearlyTotal);
+  }, [convertedPayments, paymentSources]);
+
+  const sourceGroups = calculatePaymentsBySource();
+
   return (
     <div className="space-y-5">
       {sourceGroups.length > 0 ? (

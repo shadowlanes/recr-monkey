@@ -2,32 +2,88 @@
 
 import { CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { PaymentWithConversion } from '../types';
+import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
+import { useMemo } from 'react';
 
 interface CategoriesSectionProps {
-  categoryGroups: Array<{
-    category: string;
-    payments: PaymentWithConversion[];
-    count: number;
-    monthlyTotal: number;
-    yearlyTotal: number;
-  }>;
+  convertedPayments: PaymentWithConversion[];
   displayCurrency: string;
   paymentsInDisplayCurrency: Array<{ id: string; amount: number; }>;
-  convertedPayments: PaymentWithConversion[];
   paymentSources: any[];
   formatCurrency: (amount: number, currency: string) => string;
   formatFrequency: (frequency: string) => string;
 }
 
 export function CategoriesSection({
-  categoryGroups,
+  convertedPayments,
   displayCurrency,
   paymentsInDisplayCurrency,
-  convertedPayments,
   paymentSources,
   formatCurrency,
   formatFrequency
 }: CategoriesSectionProps) {
+  
+  // Calculate payments grouped by category with USD conversion
+  const categoryGroups = useMemo(() => {
+    if (convertedPayments.length === 0) {
+      return [];
+    }
+
+    // Group payments by category
+    const categoriesMap = new Map<string, {
+      category: string;
+      payments: PaymentWithConversion[];
+      count: number;
+      monthlyTotal: number;
+      yearlyTotal: number;
+    }>();
+
+    // Process each payment
+    convertedPayments.forEach(payment => {
+      const category = payment.category || 'Uncategorized';
+      
+      if (!categoriesMap.has(category)) {
+        categoriesMap.set(category, {
+          category,
+          payments: [],
+          count: 0,
+          monthlyTotal: 0,
+          yearlyTotal: 0
+        });
+      }
+      
+      const categoryData = categoriesMap.get(category)!;
+      categoryData.payments.push(payment);
+      categoryData.count += 1;
+      
+      // Calculate monthly contribution
+      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+        categoryData.monthlyTotal += payment.amountInUSD;
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+        categoryData.monthlyTotal += (payment.amountInUSD * 4.33);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+        categoryData.monthlyTotal += (payment.amountInUSD * 1.08);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+        categoryData.monthlyTotal += (payment.amountInUSD / 12);
+      }
+      
+      // Calculate yearly contribution
+      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
+        categoryData.yearlyTotal += (payment.amountInUSD * 12);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
+        categoryData.yearlyTotal += (payment.amountInUSD * 52);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
+        categoryData.yearlyTotal += (payment.amountInUSD * 13);
+      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
+        categoryData.yearlyTotal += payment.amountInUSD;
+      }
+    });
+    
+    // Convert map to array and sort by yearly total
+    return Array.from(categoriesMap.values())
+      .sort((a, b) => b.yearlyTotal - a.yearlyTotal);
+  }, [convertedPayments]);
+
   return (
     <div className="space-y-5">
       {categoryGroups.length > 0 ? (

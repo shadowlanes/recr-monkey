@@ -2,19 +2,17 @@
 
 import { CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { RecurringPayment } from '@/app/types';
+import { PAYMENT_FREQUENCIES } from '@/app/lib/supabase';
+import { useCallback } from 'react';
 
 interface UpcomingPaymentsSectionProps {
-  upcomingPayments: Array<{
-    payment: RecurringPayment;
-    paymentSource: {
-      id: string;
-      name: string;
-      type: 'bank_account' | 'card';
-      identifier: string;
-    };
-    dueDate: Date;
-    daysUntilDue: number;
-  }>;
+  recurringPayments: RecurringPayment[];
+  paymentSources: {
+    id: string;
+    name: string;
+    type: 'bank_account' | 'card';
+    identifier: string;
+  }[];
   displayCurrency: string;
   paymentsInDisplayCurrency: Array<{ id: string; amount: number; }>;
   formatCurrency: (amount: number, currency: string) => string;
@@ -22,12 +20,88 @@ interface UpcomingPaymentsSectionProps {
 }
 
 export function UpcomingPaymentsSection({
-  upcomingPayments,
+  recurringPayments,
+  paymentSources,
   displayCurrency,
   paymentsInDisplayCurrency,
   formatCurrency,
   formatFrequency
 }: UpcomingPaymentsSectionProps) {
+  // Calculate upcoming payments in the next 4 weeks
+  const calculateUpcomingPayments = useCallback(() => {
+    if (recurringPayments.length === 0) return [];
+    
+    const today = new Date();
+    const fourWeeksLater = new Date(today);
+    fourWeeksLater.setDate(today.getDate() + 28);
+    
+    const upcomingPayments: Array<{
+      payment: RecurringPayment;
+      paymentSource: any;
+      dueDate: Date;
+      daysUntilDue: number;
+    }> = [];
+    
+    // Calculate next occurrence for each payment
+    recurringPayments.forEach(payment => {
+      const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
+      const startDate = new Date(payment.start_date);
+      
+      // Skip if start date is in the future beyond our 4-week window
+      if (startDate > fourWeeksLater) return;
+      
+      // Calculate next occurrence based on frequency
+      let nextOccurrence = new Date(startDate);
+      
+      // If start date is in the past, find the next upcoming occurrence
+      if (startDate < today) {
+        switch (payment.frequency) {
+          case PAYMENT_FREQUENCIES.WEEKLY: {
+            while (nextOccurrence < today) {
+              nextOccurrence.setDate(nextOccurrence.getDate() + 7);
+            }
+            break;
+          }
+          case PAYMENT_FREQUENCIES.MONTHLY: {
+            while (nextOccurrence < today) {
+              nextOccurrence.setMonth(nextOccurrence.getMonth() + 1);
+            }
+            break;
+          }
+          case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
+            while (nextOccurrence < today) {
+              nextOccurrence.setDate(nextOccurrence.getDate() + 28);
+            }
+            break;
+          }
+          case PAYMENT_FREQUENCIES.YEARLY: {
+            while (nextOccurrence < today) {
+              nextOccurrence.setFullYear(nextOccurrence.getFullYear() + 1);
+            }
+            break;
+          }
+        }
+      }
+      
+      // Only include if next occurrence is within our 4-week window
+      if (nextOccurrence <= fourWeeksLater) {
+        const daysUntilDue = Math.ceil((nextOccurrence.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        upcomingPayments.push({
+          payment,
+          paymentSource,
+          dueDate: nextOccurrence,
+          daysUntilDue
+        });
+      }
+    });
+    
+    // Sort by due date (soonest first)
+    return upcomingPayments.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }, [recurringPayments, paymentSources]);
+
+  const upcomingPayments = calculateUpcomingPayments();
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-[#4e5c6f]">Showing payments due in the next 4 weeks</p>

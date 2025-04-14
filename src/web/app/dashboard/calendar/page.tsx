@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  PAYMENT_FREQUENCIES, 
   convertToUSD, 
   convertCurrency,
   getDisplayCurrency
@@ -12,16 +11,7 @@ import { PaymentDateItem, RecurringPayment } from '../../types';
 import { useData } from '../../contexts/data-context';
 import LoadingAnimation from '../../components/loading-animation';
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   CalendarDaysIcon,
-  CalendarIcon, 
-  CurrencyDollarIcon,
-  BanknotesIcon,
-  CreditCardIcon,
-  ArrowPathIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { PaymentSummary } from './components/PaymentSummary';
@@ -29,6 +19,12 @@ import { PaymentSourcesSection } from './components/PaymentSourcesSection';
 import { CategoriesSection } from './components/CategoriesSection';
 import { UpcomingPaymentsSection } from './components/UpcomingPaymentsSection';
 import { CalendarSection } from './components/CalendarSection';
+import { 
+  getAllPaymentDatesForDay,
+  formatFrequency,
+  isToday,
+  formatCurrency
+} from './calendar-utils';
 
 // View mode types
 type CalendarViewMode = 'month' | 'year';
@@ -54,15 +50,9 @@ export default function Calendar() {
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
   const [calendarDays, setCalendarDays] = useState<Array<{ date: Date | null, payments: PaymentDateItem[] }>>([]);
   const [yearCalendar, setYearCalendar] = useState<Array<Array<{ date: Date | null, payments: PaymentDateItem[] }>>>([]);
-  const [hoverPayment, setHoverPayment] = useState<{
-    paymentItem: PaymentDateItem;
-    position: { x: number; y: number };
-  } | null>(null);
-  const [convertedPayments, setConvertedPayments] = useState<PaymentWithConversion[]>([]);
-  const [showBreakdown, setShowBreakdown] = useState(false);
-  // Tab state for breakdown section
-  const [activeBreakdownTab, setActiveBreakdownTab] = useState<'sources' | 'categories' | 'upcoming'>('sources');
 
+  const [convertedPayments, setConvertedPayments] = useState<PaymentWithConversion[]>([]);
+  
   // State for display currency
   const [displayCurrency, setDisplayCurrency] = useState<string>(getDisplayCurrency());
   
@@ -155,144 +145,30 @@ export default function Calendar() {
     convertToDisplayCurrency();
   }, [convertedPayments, displayCurrency]);
 
-  // Get all payment occurrences for a day
-  const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
-    const paymentDates: Date[] = [];
-    const startDate = new Date(payment.start_date);
-    
-    // If start date is after the target day's month/year, no payments yet
-    if (startDate.getFullYear() > dayDate.getFullYear() || 
-        (startDate.getFullYear() === dayDate.getFullYear() && 
-         startDate.getMonth() > dayDate.getMonth())) {
-      return paymentDates;
-    }
-    
-    // Check if there's a payment on this day based on the frequency
-    switch (payment.frequency) {
-      case PAYMENT_FREQUENCIES.WEEKLY: {
-        // Find the first occurrence in or before this month
-        const currentDate = new Date(startDate);
-        while (currentDate.getFullYear() < dayDate.getFullYear() || 
-               (currentDate.getFullYear() === dayDate.getFullYear() && 
-                currentDate.getMonth() < dayDate.getMonth())) {
-          currentDate.setDate(currentDate.getDate() + 7);
-        }
-        
-        // Go back one occurrence to ensure we don't miss the first one in this month
-        currentDate.setDate(currentDate.getDate() - 7);
-        
-        // Check all weekly occurrences in this month
-        while (currentDate.getFullYear() <= dayDate.getFullYear() && 
-               currentDate.getMonth() <= dayDate.getMonth()) {
-          // Move to next occurrence
-          currentDate.setDate(currentDate.getDate() + 7);
-          
-          // If this occurrence is in the correct month and day, add it
-          if (currentDate.getMonth() === dayDate.getMonth() && 
-              currentDate.getFullYear() === dayDate.getFullYear() && 
-              currentDate.getDate() === dayDate.getDate()) {
-            paymentDates.push(new Date(currentDate));
-          }
-        }
-        break;
-      }
-      
-      case PAYMENT_FREQUENCIES.MONTHLY: {
-        // For monthly payments, just check if the day of the month matches
-        if (startDate.getDate() === dayDate.getDate()) {
-          // Create a date for this monthly payment in the current view month
-          const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
-          
-          // Only add if the payment date is on or after the start date
-          if (paymentDate >= startDate) {
-            paymentDates.push(paymentDate);
-          }
-        }
-        break;
-      }
-      
-      case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
-        // Similar to weekly but with 28-day intervals
-        const currentDate = new Date(startDate);
-        while (currentDate.getFullYear() < dayDate.getFullYear() || 
-               (currentDate.getFullYear() === dayDate.getFullYear() && 
-                currentDate.getMonth() < dayDate.getMonth())) {
-          currentDate.setDate(currentDate.getDate() + 28);
-        }
-        
-        // Go back one occurrence to ensure we don't miss the first one in this month
-        currentDate.setDate(currentDate.getDate() - 28);
-        
-        // Check all 4-week occurrences in this month
-        while (currentDate.getFullYear() <= dayDate.getFullYear() && 
-               currentDate.getMonth() <= dayDate.getMonth()) {
-          // Move to next occurrence
-          currentDate.setDate(currentDate.getDate() + 28);
-          
-          // If this occurrence is in the correct month and day, add it
-          if (currentDate.getMonth() === dayDate.getMonth() && 
-              currentDate.getFullYear() === dayDate.getFullYear() && 
-              currentDate.getDate() === dayDate.getDate()) {
-            paymentDates.push(new Date(currentDate));
-          }
-        }
-        break;
-      }
-      
-      case PAYMENT_FREQUENCIES.YEARLY: {
-        // For yearly payments, check if the month and day match
-        if (startDate.getDate() === dayDate.getDate() && 
-            startDate.getMonth() === dayDate.getMonth()) {
-          // Create a date for this yearly payment in the current view year
-          const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
-          
-          // Only add if the payment date is on or after the start date
-          if (paymentDate >= startDate) {
-            paymentDates.push(paymentDate);
-          }
-        }
-        break;
-      }
-    }
-    
-    return paymentDates;
-  };
-
   // Generate month calendar
   const generateMonthCalendar = useCallback(() => {
-    // Get first day of the month
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    // Get last day of the month
     const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    
-    // Get day of week for first day (0 = Sunday, 6 = Saturday)
     const firstDayOfWeek = firstDay.getDay();
     
     const days: Array<{ date: Date | null, payments: PaymentDateItem[] }> = [];
     
-    // Add empty slots for days before the first day of the month
     for (let i = 0; i < firstDayOfWeek; i++) {
       days.push({ date: null, payments: [] });
     }
     
-    // Add all days of the month
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
       days.push({ date, payments: [] });
     }
     
-    // Calculate payments for each day
     if (recurringPayments.length > 0) {
-      // For each day in the calendar
       days.forEach(day => {
         if (!day.date) return;
         
-        // For each recurring payment
         recurringPayments.forEach(payment => {
-          // Get all payment occurrences for this day in the month
           const paymentDates = getAllPaymentDatesForDay(payment, day.date!);
           
-          // Add each payment occurrence to the day
           paymentDates.forEach(paymentDate => {
             const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
             
@@ -304,7 +180,6 @@ export default function Calendar() {
           });
         });
         
-        // Sort payments by amount (highest first)
         day.payments.sort((a, b) => b.payment.amount - a.payment.amount);
       });
     }
@@ -383,210 +258,6 @@ export default function Calendar() {
     generateYearCalendar();
   }, [generateMonthCalendar, generateYearCalendar]);
 
-  // Calculate payments grouped by source with USD conversion
-  const calculatePaymentsBySource = useCallback(() => {
-    if (convertedPayments.length === 0 || paymentSources.length === 0) {
-      return [];
-    }
-
-    // Group payments by source
-    const paymentsBySource = paymentSources.map(source => {
-      const sourcePayments = convertedPayments.filter(payment => 
-        payment.payment_source_id === source.id
-      );
-      
-      // Calculate totals using converted USD amounts
-      const monthlyTotal = sourcePayments.reduce((sum, payment) => {
-        // Monthly frequency payments
-        if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
-          return sum + payment.amountInUSD;
-        }
-        // Weekly frequency payments (multiply by average weeks in a month)
-        else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
-          return sum + (payment.amountInUSD * 4.33);
-        }
-        // Every 4 weeks (slightly different than monthly)
-        else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
-          return sum + (payment.amountInUSD * 1.08); // 13 payments per year instead of 12
-        }
-        // Yearly frequency payments (divide by 12 for monthly equivalent)
-        else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
-          return sum + (payment.amountInUSD / 12);
-        }
-        return sum;
-      }, 0);
-
-      const yearlyTotal = sourcePayments.reduce((sum, payment) => {
-        // Monthly frequency payments
-        if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
-          return sum + (payment.amountInUSD * 12);
-        }
-        // Weekly frequency payments
-        else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
-          return sum + (payment.amountInUSD * 52);
-        }
-        // Every 4 weeks
-        else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
-          return sum + (payment.amountInUSD * 13);
-        }
-        // Yearly frequency payments
-        else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
-          return sum + payment.amountInUSD;
-        }
-        return sum;
-      }, 0);
-
-      return {
-        source,
-        payments: sourcePayments,
-        count: sourcePayments.length,
-        monthlyTotal,
-        yearlyTotal
-      };
-    }).filter(group => group.payments.length > 0); // Remove sources with no payments
-
-    // Sort by yearly total (highest first)
-    return paymentsBySource.sort((a, b) => b.yearlyTotal - a.yearlyTotal);
-  }, [convertedPayments, paymentSources]);
-
-  // Calculate payments grouped by category with USD conversion
-  const calculatePaymentsByCategory = useCallback(() => {
-    if (convertedPayments.length === 0) {
-      return [];
-    }
-
-    // Group payments by category
-    const categoriesMap = new Map<string, {
-      category: string;
-      payments: PaymentWithConversion[];
-      count: number;
-      monthlyTotal: number;
-      yearlyTotal: number;
-    }>();
-
-    // Process each payment
-    convertedPayments.forEach(payment => {
-      const category = payment.category || 'Uncategorized';
-      
-      if (!categoriesMap.has(category)) {
-        categoriesMap.set(category, {
-          category,
-          payments: [],
-          count: 0,
-          monthlyTotal: 0,
-          yearlyTotal: 0
-        });
-      }
-      
-      const categoryData = categoriesMap.get(category)!;
-      categoryData.payments.push(payment);
-      categoryData.count += 1;
-      
-      // Calculate monthly contribution
-      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
-        categoryData.monthlyTotal += payment.amountInUSD;
-      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
-        categoryData.monthlyTotal += (payment.amountInUSD * 4.33);
-      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
-        categoryData.monthlyTotal += (payment.amountInUSD * 1.08);
-      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
-        categoryData.monthlyTotal += (payment.amountInUSD / 12);
-      }
-      
-      // Calculate yearly contribution
-      if (payment.frequency === PAYMENT_FREQUENCIES.MONTHLY) {
-        categoryData.yearlyTotal += (payment.amountInUSD * 12);
-      } else if (payment.frequency === PAYMENT_FREQUENCIES.WEEKLY) {
-        categoryData.yearlyTotal += (payment.amountInUSD * 52);
-      } else if (payment.frequency === PAYMENT_FREQUENCIES.FOUR_WEEKS) {
-        categoryData.yearlyTotal += (payment.amountInUSD * 13);
-      } else if (payment.frequency === PAYMENT_FREQUENCIES.YEARLY) {
-        categoryData.yearlyTotal += payment.amountInUSD;
-      }
-    });
-    
-    // Convert map to array and sort by yearly total
-    return Array.from(categoriesMap.values())
-      .sort((a, b) => b.yearlyTotal - a.yearlyTotal);
-  }, [convertedPayments]);
-
-  // Calculate upcoming payments in the next 4 weeks
-  const calculateUpcomingPayments = useCallback(() => {
-    if (recurringPayments.length === 0) return [];
-    
-    const today = new Date();
-    const fourWeeksLater = new Date(today);
-    fourWeeksLater.setDate(today.getDate() + 28);
-    
-    const upcomingPayments: Array<{
-      payment: RecurringPayment;
-      paymentSource: any;
-      dueDate: Date;
-      daysUntilDue: number;
-    }> = [];
-    
-    // Calculate next occurrence for each payment
-    recurringPayments.forEach(payment => {
-      const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
-      const startDate = new Date(payment.start_date);
-      
-      // Skip if start date is in the future beyond our 4-week window
-      if (startDate > fourWeeksLater) return;
-      
-      // Calculate next occurrence based on frequency
-      let nextOccurrence = new Date(startDate);
-      
-      // If start date is in the past, find the next upcoming occurrence
-      if (startDate < today) {
-        switch (payment.frequency) {
-          case PAYMENT_FREQUENCIES.WEEKLY: {
-            // Find next weekly occurrence
-            while (nextOccurrence < today) {
-              nextOccurrence.setDate(nextOccurrence.getDate() + 7);
-            }
-            break;
-          }
-          case PAYMENT_FREQUENCIES.MONTHLY: {
-            // Find next monthly occurrence
-            while (nextOccurrence < today) {
-              nextOccurrence.setMonth(nextOccurrence.getMonth() + 1);
-            }
-            break;
-          }
-          case PAYMENT_FREQUENCIES.FOUR_WEEKS: {
-            // Find next 4-weekly occurrence
-            while (nextOccurrence < today) {
-              nextOccurrence.setDate(nextOccurrence.getDate() + 28);
-            }
-            break;
-          }
-          case PAYMENT_FREQUENCIES.YEARLY: {
-            // Find next yearly occurrence
-            while (nextOccurrence < today) {
-              nextOccurrence.setFullYear(nextOccurrence.getFullYear() + 1);
-            }
-            break;
-          }
-        }
-      }
-      
-      // Only include if next occurrence is within our 4-week window
-      if (nextOccurrence <= fourWeeksLater) {
-        const daysUntilDue = Math.ceil((nextOccurrence.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        upcomingPayments.push({
-          payment,
-          paymentSource,
-          dueDate: nextOccurrence,
-          daysUntilDue
-        });
-      }
-    });
-    
-    // Sort by due date (soonest first)
-    return upcomingPayments.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  }, [recurringPayments, paymentSources]);
-
   // Navigate to previous period (month or year)
   const goToPrevious = () => {
     if (viewMode === 'month') {
@@ -610,50 +281,7 @@ export default function Calendar() {
     setViewMode(viewMode === 'month' ? 'year' : 'month');
   };
 
-  // Handle mouse enter on payment item
-  const handlePaymentMouseEnter = (e: React.MouseEvent, paymentItem: PaymentDateItem) => {
-    setHoverPayment({
-      paymentItem,
-      position: { x: e.clientX, y: e.clientY }
-    });
-  };
 
-  // Handle mouse leave on payment item
-  const handlePaymentMouseLeave = () => {
-    setHoverPayment(null);
-  };
-
-  // Format currency amount
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD'
-    }).format(amount);
-  };
-
-  // Format frequency for display
-  const formatFrequency = (frequency: string) => {
-    switch (frequency) {
-      case PAYMENT_FREQUENCIES.WEEKLY:
-        return 'Weekly';
-      case PAYMENT_FREQUENCIES.MONTHLY:
-        return 'Monthly';
-      case PAYMENT_FREQUENCIES.FOUR_WEEKS:
-        return 'Every 4 Weeks';
-      case PAYMENT_FREQUENCIES.YEARLY:
-        return 'Yearly';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  // Check if a date is today
-  const isToday = (date: Date): boolean => {
-    const today = new Date();
-    return date.getDate() === today.getDate() && 
-           date.getMonth() === today.getMonth() && 
-           date.getFullYear() === today.getFullYear();
-  };
 
   // Format date for display based on view mode
   const formatViewDate = (): string => {
@@ -669,135 +297,9 @@ export default function Calendar() {
     return new Date(currentDate.getFullYear(), monthIndex, 1).toLocaleDateString('en-US', { month: 'short' });
   };
 
-  // Calculate monthly total based on current view
-  const calculateMonthlyTotal = (): number => {
-    if (viewMode === 'month') {
-      return calendarDays.reduce((sum, day) => 
-        sum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0);
-    } else {
-      // Make sure we have data for the current month before calculating
-      const currentMonth = currentDate.getMonth();
-      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
-        return yearCalendar[currentMonth].reduce((sum, day) => 
-          sum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0);
-      }
-      return 0;
-    }
-  };
+  // Handle mouse enter on payment item
 
-  // Calculate yearly total
-  const calculateYearlyTotal = (): number => {
-    // Make sure we have yearCalendar data before calculating
-    if (yearCalendar.length === 0) return 0;
-    
-    return yearCalendar.reduce((sum, month) => 
-      sum + month.reduce((monthSum, day) => 
-        monthSum + day.payments.reduce((daySum, payment) => daySum + payment.payment.amount, 0), 0), 0);
-  };
-
-  // Calculate monthly total based on current view using USD conversion
-  const calculateMonthlyTotalUSD = useCallback((): number => {
-    if (convertedPayments.length === 0) return 0;
-    
-    // Create a lookup for USD amounts
-    const usdAmountMap = new Map(
-      convertedPayments.map(payment => [payment.id, payment.amountInUSD])
-    );
-    
-    if (viewMode === 'month') {
-      return calendarDays.reduce((sum, day) => 
-        sum + day.payments.reduce((daySum, payment) => {
-          // Use the converted USD amount if available
-          const amountInUSD = usdAmountMap.get(payment.payment.id) || payment.payment.amount;
-          return daySum + amountInUSD;
-        }, 0), 0);
-    } else {
-      // Make sure we have data for the current month before calculating
-      const currentMonth = currentDate.getMonth();
-      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
-        return yearCalendar[currentMonth].reduce((sum, day) => 
-          sum + day.payments.reduce((daySum, payment) => {
-            // Use the converted USD amount if available
-            const amountInUSD = usdAmountMap.get(payment.payment.id) || payment.payment.amount;
-            return daySum + amountInUSD;
-          }, 0), 0);
-      }
-      return 0;
-    }
-  }, [viewMode, calendarDays, yearCalendar, convertedPayments, currentDate]);
-
-  // Calculate yearly total using USD conversion
-  const calculateYearlyTotalUSD = useCallback((): number => {
-    if (convertedPayments.length === 0) return 0;
-    
-    // Create a lookup for USD amounts
-    const usdAmountMap = new Map(
-      convertedPayments.map(payment => [payment.id, payment.amountInUSD])
-    );
-    
-    // Make sure we have yearCalendar data before calculating
-    if (yearCalendar.length === 0) return 0;
-    
-    return yearCalendar.reduce((sum, month) => 
-      sum + month.reduce((monthSum, day) => 
-        monthSum + day.payments.reduce((daySum, payment) => {
-          // Use the converted USD amount if available
-          const amountInUSD = usdAmountMap.get(payment.payment.id) || payment.payment.amount;
-          return daySum + amountInUSD;
-        }, 0), 0), 0);
-  }, [yearCalendar, convertedPayments]);
-
-  // Calculate monthly total in the selected display currency
-  const calculateMonthlyTotalInDisplayCurrency = useCallback((): number => {
-    if (convertedPayments.length === 0 || paymentsInDisplayCurrency.length === 0) return 0;
-    
-    // Create a lookup for display currency amounts
-    const displayCurrencyAmountMap = new Map(
-      paymentsInDisplayCurrency.map(payment => [payment.id, payment.amount])
-    );
-    
-    if (viewMode === 'month') {
-      return calendarDays.reduce((sum, day) => 
-        sum + day.payments.reduce((daySum, payment) => {
-          // Use the converted display currency amount if available
-          const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
-          return daySum + amountInDisplayCurrency;
-        }, 0), 0);
-    } else {
-      // Make sure we have data for the current month before calculating
-      const currentMonth = currentDate.getMonth();
-      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
-        return yearCalendar[currentMonth].reduce((sum, day) => 
-          sum + day.payments.reduce((daySum, payment) => {
-            // Use the converted display currency amount if available
-            const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
-            return daySum + amountInDisplayCurrency;
-          }, 0), 0);
-      }
-      return 0;
-    }
-  }, [viewMode, calendarDays, yearCalendar, convertedPayments, paymentsInDisplayCurrency, currentDate]);
-
-  // Calculate yearly total in the selected display currency
-  const calculateYearlyTotalInDisplayCurrency = useCallback((): number => {
-    if (convertedPayments.length === 0 || paymentsInDisplayCurrency.length === 0) return 0;
-    
-    // Create a lookup for display currency amounts
-    const displayCurrencyAmountMap = new Map(
-      paymentsInDisplayCurrency.map(payment => [payment.id, payment.amount])
-    );
-    
-    // Make sure we have yearCalendar data before calculating
-    if (yearCalendar.length === 0) return 0;
-    
-    return yearCalendar.reduce((sum, month) => 
-      sum + month.reduce((monthSum, day) => 
-        monthSum + day.payments.reduce((daySum, payment) => {
-          // Use the converted display currency amount if available
-          const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
-          return daySum + amountInDisplayCurrency;
-        }, 0), 0), 0);
-  }, [yearCalendar, convertedPayments, paymentsInDisplayCurrency]);
+  // Handle mouse leave on payment item
 
   // Determine which error to display
   const displayError = error || dataError;
@@ -813,12 +315,15 @@ export default function Calendar() {
 
       <PaymentSummary 
         recurringPaymentsCount={recurringPayments.length}
-        monthlyTotal={calculateMonthlyTotalInDisplayCurrency()}
-        yearlyTotal={calculateYearlyTotalInDisplayCurrency()}
         displayCurrency={displayCurrency}
         isConverting={isConverting}
         viewMode={viewMode}
         formatCurrency={formatCurrency}
+        convertedPayments={convertedPayments}
+        paymentsInDisplayCurrency={paymentsInDisplayCurrency}
+        calendarDays={calendarDays}
+        yearCalendar={yearCalendar}
+        currentDate={currentDate}
       />
 
       {displayError && (
@@ -898,10 +403,10 @@ export default function Calendar() {
           <div className="p-5">
             {activeTab === 'sources' && (
               <PaymentSourcesSection 
-                sourceGroups={calculatePaymentsBySource()}
+                convertedPayments={convertedPayments}
+                paymentSources={paymentSources}
                 displayCurrency={displayCurrency}
                 paymentsInDisplayCurrency={paymentsInDisplayCurrency}
-                convertedPayments={convertedPayments}
                 formatCurrency={formatCurrency}
                 formatFrequency={formatFrequency}
               />
@@ -909,10 +414,9 @@ export default function Calendar() {
 
             {activeTab === 'categories' && (
               <CategoriesSection 
-                categoryGroups={calculatePaymentsByCategory()}
+                convertedPayments={convertedPayments}
                 displayCurrency={displayCurrency}
                 paymentsInDisplayCurrency={paymentsInDisplayCurrency}
-                convertedPayments={convertedPayments}
                 paymentSources={paymentSources}
                 formatCurrency={formatCurrency}
                 formatFrequency={formatFrequency}
@@ -921,7 +425,8 @@ export default function Calendar() {
 
             {activeTab === 'upcoming' && (
               <UpcomingPaymentsSection 
-                upcomingPayments={calculateUpcomingPayments()}
+                recurringPayments={recurringPayments}
+                paymentSources={paymentSources}
                 displayCurrency={displayCurrency}
                 paymentsInDisplayCurrency={paymentsInDisplayCurrency}
                 formatCurrency={formatCurrency}

@@ -1,26 +1,83 @@
 'use client';
 
 import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { useCallback } from 'react';
+import { PaymentWithConversion } from '../page';
 
 interface PaymentSummaryProps {
   recurringPaymentsCount: number;
-  monthlyTotal: number;
-  yearlyTotal: number;
   displayCurrency: string;
   isConverting: boolean;
   viewMode: 'month' | 'year';
   formatCurrency: (amount: number, currency: string) => string;
+  convertedPayments: PaymentWithConversion[];
+  paymentsInDisplayCurrency: Array<{ id: string; amount: number; }>;
+  calendarDays: Array<{ date: Date | null; payments: any[]; }>;
+  yearCalendar: Array<Array<{ date: Date | null; payments: any[]; }>>;
+  currentDate: Date;
 }
 
 export function PaymentSummary({
   recurringPaymentsCount,
-  monthlyTotal,
-  yearlyTotal,
   displayCurrency,
   isConverting,
   viewMode,
-  formatCurrency
+  formatCurrency,
+  convertedPayments,
+  paymentsInDisplayCurrency,
+  calendarDays,
+  yearCalendar,
+  currentDate
 }: PaymentSummaryProps) {
+  // Calculate monthly total in the selected display currency
+  const calculateMonthlyTotalInDisplayCurrency = useCallback((): number => {
+    if (convertedPayments.length === 0 || paymentsInDisplayCurrency.length === 0) return 0;
+    
+    // Create a lookup for display currency amounts
+    const displayCurrencyAmountMap = new Map(
+      paymentsInDisplayCurrency.map(payment => [payment.id, payment.amount])
+    );
+    
+    if (viewMode === 'month') {
+      return calendarDays.reduce((sum, day) => 
+        sum + day.payments.reduce((daySum, payment) => {
+          const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
+          return daySum + amountInDisplayCurrency;
+        }, 0), 0);
+    } else {
+      const currentMonth = currentDate.getMonth();
+      if (yearCalendar.length > currentMonth && yearCalendar[currentMonth]) {
+        return yearCalendar[currentMonth].reduce((sum, day) => 
+          sum + day.payments.reduce((daySum, payment) => {
+            const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
+            return daySum + amountInDisplayCurrency;
+          }, 0), 0);
+      }
+      return 0;
+    }
+  }, [viewMode, calendarDays, yearCalendar, convertedPayments, paymentsInDisplayCurrency, currentDate]);
+
+  // Calculate yearly total in the selected display currency
+  const calculateYearlyTotalInDisplayCurrency = useCallback((): number => {
+    if (convertedPayments.length === 0 || paymentsInDisplayCurrency.length === 0) return 0;
+    
+    const displayCurrencyAmountMap = new Map(
+      paymentsInDisplayCurrency.map(payment => [payment.id, payment.amount])
+    );
+    
+    if (yearCalendar.length === 0) return 0;
+    
+    return yearCalendar.reduce((sum, month) => 
+      sum + month.reduce((monthSum, day) => 
+        monthSum + day.payments.reduce((daySum, payment) => {
+          const amountInDisplayCurrency = displayCurrencyAmountMap.get(payment.payment.id) || payment.payment.amount;
+          return daySum + amountInDisplayCurrency;
+        }, 0), 0), 0);
+  }, [yearCalendar, convertedPayments, paymentsInDisplayCurrency]);
+
+  const monthlyTotal = calculateMonthlyTotalInDisplayCurrency();
+  const yearlyTotal = calculateYearlyTotalInDisplayCurrency();
+
   return (
     <div className="mb-6 p-5 bg-white rounded-lg border border-gray-100 shadow-sm">
       <h3 className="font-bold mb-3 text-[#4e5c6f] flex items-center">
