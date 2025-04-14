@@ -264,6 +264,16 @@ export default function Calendar() {
           {/* Tab Navigation */}
           <div className="flex border-b border-gray-200">
             <button
+              onClick={() => setActiveTab('calendar')}
+              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'calendar'
+                  ? 'text-[#e06c00] border-[#e06c00]'
+                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
+              }`}
+            >
+              Calendar
+            </button>
+            <button
               onClick={() => setActiveTab('sources')}
               className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
                 activeTab === 'sources'
@@ -292,16 +302,6 @@ export default function Calendar() {
               }`}
             >
               Upcoming Payments
-            </button>
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'calendar'
-                  ? 'text-[#e06c00] border-[#e06c00]'
-                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
-              }`}
-            >
-              Calendar
             </button>
           </div>
 
