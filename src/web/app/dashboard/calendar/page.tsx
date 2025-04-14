@@ -67,6 +67,9 @@ export default function Calendar() {
     amount: number;
   }>>([]);
 
+  // Update the type to include 'calendar' as a valid tab
+  const [activeTab, setActiveTab] = useState<'sources' | 'categories' | 'upcoming' | 'calendar'>('calendar');
+
   // Convert payments to USD whenever recurring payments change
   useEffect(() => {
     const convertPaymentAmounts = async () => {
@@ -1253,7 +1256,7 @@ export default function Calendar() {
         </h2>
       </div>
 
-      {/* Payment Summary - moved to the top */}
+      {/* Payment Summary section */}
       <div className="mb-6 p-5 bg-white rounded-lg border border-gray-100 shadow-sm">
         <h3 className="font-bold mb-3 text-[#4e5c6f] flex items-center">
           <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
@@ -1286,24 +1289,6 @@ export default function Calendar() {
             </p>
           </div>
         </div>
-        
-        {/* See breakdown toggle button */}
-        <div className="mt-4">
-          <button 
-            onClick={() => setShowBreakdown(!showBreakdown)}
-            className="flex items-center w-full justify-center py-2 border-t border-gray-200 text-[#4e5c6f] hover:text-[#e06c00] font-medium transition-colors"
-          >
-            {showBreakdown ? 'Hide breakdown' : 'See detailed breakdown'} 
-            {showBreakdown ? (
-              <ChevronUpIcon className="ml-1 w-5 h-5" />
-            ) : (
-              <ChevronDownIcon className="ml-1 w-5 h-5" />
-            )}
-          </button>
-        </div>
-        
-        {/* Breakdown section - now using tabbed UI */}
-        {showBreakdown && renderBreakdownTabs()}
       </div>
 
       {displayError && (
@@ -1334,45 +1319,367 @@ export default function Calendar() {
           </button>
         </div>
       ) : (
-        <>
-          {/* View toggle and navigation controls - Moved here */}
-          <div className="flex justify-between items-center mb-4 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-            <button 
-              onClick={toggleViewMode}
-              className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm">
+          {/* Tab Navigation */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('sources')}
+              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'sources'
+                  ? 'text-[#e06c00] border-[#e06c00]'
+                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
+              }`}
             >
-              <CalendarIcon className="w-5 h-5" />
-              {viewMode === 'month' ? 'Year View' : 'Month View'}
+              Payment Sources
             </button>
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={goToPrevious} 
-                className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
-                aria-label="Previous period"
-              >
-                <ChevronLeftIcon className="w-5 h-5" />
-              </button>
-              <span className="text-lg font-medium text-[#303030] px-2">
-                {formatViewDate()}
-              </span>
-              <button 
-                onClick={goToNext} 
-                className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
-                aria-label="Next period"
-              >
-                <ChevronRightIcon className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'categories'
+                  ? 'text-[#e06c00] border-[#e06c00]'
+                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
+              }`}
+            >
+              Categories
+            </button>
+            <button
+              onClick={() => setActiveTab('upcoming')}
+              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'upcoming'
+                  ? 'text-[#e06c00] border-[#e06c00]'
+                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
+              }`}
+            >
+              Upcoming Payments
+            </button>
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'calendar'
+                  ? 'text-[#e06c00] border-[#e06c00]'
+                  : 'text-[#4e5c6f] border-transparent hover:text-[#303030]'
+              }`}
+            >
+              Calendar
+            </button>
           </div>
 
-          {/* Calendar display */}
-          <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-            {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
+          {/* Tab Content */}
+          <div className="p-5">
+            {activeTab === 'sources' && (
+              <div className="space-y-5">
+                {calculatePaymentsBySource().map((sourceGroup, index) => (
+                  <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center">
+                        {sourceGroup.source.type === 'bank_account' ? (
+                          <BanknotesIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                        ) : (
+                          <CreditCardIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                        )}
+                        <h5 className="font-medium text-[#303030]">{sourceGroup.source.name}</h5>
+                      </div>
+                      <span className="text-sm bg-[#fff0e6] px-2 py-1 rounded-full text-[#e06c00] font-medium">
+                        {sourceGroup.count} payment{sourceGroup.count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Source Type</p>
+                        <p className="font-medium text-[#303030]">
+                          {sourceGroup.source.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                          <span className="text-[#e06c00] ml-1">•••• {sourceGroup.source.identifier}</span>
+                        </p>
+                      </div>
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Monthly Total</p>
+                        <p className="font-semibold text-[#303030]">
+                          {formatCurrency(
+                            // Convert USD amount to display currency
+                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                              ? sourceGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
+                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.monthlyTotal)
+                              : sourceGroup.monthlyTotal,
+                            displayCurrency
+                          )}
+                        </p>
+                      </div>
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Yearly Total</p>
+                        <p className="font-semibold text-[#303030]">
+                          {formatCurrency(
+                            // Convert USD amount to display currency
+                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                              ? sourceGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
+                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? sourceGroup.yearlyTotal)
+                              : sourceGroup.yearlyTotal,
+                            displayCurrency
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* List of payments for this source */}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-[#4e5c6f] mb-2 font-medium">Recurring Payments:</p>
+                      <div className="text-sm space-y-2">
+                        {sourceGroup.payments.map((payment, idx) => {
+                          // Find converted amount in display currency
+                          const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
+                          
+                          return (
+                            <div key={idx} className="flex justify-between items-center p-2 hover:bg-[#f9f9f9] rounded-lg">
+                              <div className="flex items-center">
+                                <CurrencyDollarIcon className="w-4 h-4 mr-2 text-[#e06c00]" />
+                                <span className="text-[#303030]">{payment.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium text-[#303030]">
+                                  {formatCurrency(payment.amount, payment.currency)}
+                                </div> 
+                                {displayCurrency !== payment.currency && displayAmount && (
+                                  <div className="text-xs text-[#4e5c6f]">
+                                    {formatCurrency(displayAmount, displayCurrency)}
+                                  </div>
+                                )}
+                                <div className="text-xs text-[#4e5c6f] flex items-center justify-end mt-1">
+                                  <ArrowPathIcon className="w-3 h-3 mr-1" />
+                                  {formatFrequency(payment.frequency)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'categories' && (
+              <div className="space-y-5">
+                {calculatePaymentsByCategory().map((categoryGroup, index) => (
+                  <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <h5 className="font-medium text-[#303030] flex items-center">
+                        <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                        {categoryGroup.category}
+                      </h5>
+                      <span className="text-sm bg-[#fff0e6] px-2 py-1 rounded-full text-[#e06c00] font-medium">
+                        {categoryGroup.count} payment{categoryGroup.count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Monthly Total</p>
+                        <p className="font-semibold text-[#303030]">
+                          {formatCurrency(
+                            // Convert USD amount to display currency
+                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                              ? categoryGroup.monthlyTotal / convertedPayments[0].amountInUSD * 
+                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? categoryGroup.monthlyTotal)
+                              : categoryGroup.monthlyTotal,
+                            displayCurrency
+                          )}
+                        </p>
+                      </div>
+                      <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                        <p className="text-[#4e5c6f] mb-1">Yearly Total</p>
+                        <p className="font-semibold text-[#303030]">
+                          {formatCurrency(
+                            // Convert USD amount to display currency
+                            paymentsInDisplayCurrency.length > 0 && convertedPayments[0]
+                              ? categoryGroup.yearlyTotal / convertedPayments[0].amountInUSD * 
+                                (paymentsInDisplayCurrency.find(p => p.id === convertedPayments[0].id)?.amount ?? categoryGroup.yearlyTotal)
+                              : categoryGroup.yearlyTotal,
+                            displayCurrency
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* List of payments for this category */}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-[#4e5c6f] mb-2 font-medium">Recurring Payments:</p>
+                      <div className="text-sm space-y-2">
+                        {categoryGroup.payments.map((payment, idx) => {
+                          // Find converted amount in display currency
+                          const displayAmount = paymentsInDisplayCurrency.find(p => p.id === payment.id)?.amount;
+                          // Find payment source
+                          const paymentSource = paymentSources.find(s => s.id === payment.payment_source_id);
+                          
+                          return (
+                            <div key={idx} className="flex justify-between items-center p-2 hover:bg-[#f9f9f9] rounded-lg">
+                              <div className="flex items-center">
+                                <CurrencyDollarIcon className="w-4 h-4 mr-2 text-[#e06c00]" />
+                                <span className="text-[#303030]">{payment.name}</span>
+                                {paymentSource && (
+                                  <span className="text-xs text-[#4e5c6f] ml-2">
+                                    ({paymentSource.type === 'bank_account' ? 'Bank' : 'Card'}: {paymentSource.name})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium text-[#303030]">
+                                  {formatCurrency(payment.amount, payment.currency)}
+                                </div> 
+                                {displayCurrency !== payment.currency && displayAmount && (
+                                  <div className="text-xs text-[#4e5c6f]">
+                                    {formatCurrency(displayAmount, displayCurrency)}
+                                  </div>
+                                )}
+                                <div className="text-xs text-[#4e5c6f] flex items-center justify-end mt-1">
+                                  <ArrowPathIcon className="w-3 h-3 mr-1" />
+                                  {formatFrequency(payment.frequency)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'upcoming' && (
+              <div className="space-y-4">
+                <p className="text-sm text-[#4e5c6f]">Showing payments due in the next 4 weeks</p>
+                
+                {calculateUpcomingPayments().map((upcomingPayment, index) => {
+                  // Find converted amount in display currency
+                  const displayAmount = paymentsInDisplayCurrency.find(
+                    p => p.id === upcomingPayment.payment.id
+                  )?.amount;
+                  
+                  // Determine urgency class based on days until due
+                  let urgencyClass = 'bg-green-50 text-green-700';
+                  if (upcomingPayment.daysUntilDue <= 3) {
+                    urgencyClass = 'bg-red-50 text-red-700';
+                  } else if (upcomingPayment.daysUntilDue <= 7) {
+                    urgencyClass = 'bg-orange-50 text-orange-700';
+                  }
+                  
+                  return (
+                    <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-center mb-3">
+                        <h5 className="font-medium text-[#303030] flex items-center">
+                          <CurrencyDollarIcon className="w-5 h-5 mr-2 text-[#e06c00]" />
+                          {upcomingPayment.payment.name}
+                        </h5>
+                        <span className={`text-sm px-2 py-1 rounded-full font-medium ${urgencyClass}`}>
+                          {upcomingPayment.daysUntilDue === 0 
+                            ? 'Due today' 
+                            : upcomingPayment.daysUntilDue === 1 
+                              ? 'Due tomorrow' 
+                              : `Due in ${upcomingPayment.daysUntilDue} days`}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                          <p className="text-[#4e5c6f] mb-1">Amount</p>
+                          <p className="font-semibold text-[#303030]">
+                            {formatCurrency(upcomingPayment.payment.amount, upcomingPayment.payment.currency)}
+                            {displayCurrency !== upcomingPayment.payment.currency && displayAmount && (
+                              <span className="block text-xs font-normal text-[#4e5c6f] mt-1">
+                                {formatCurrency(displayAmount, displayCurrency)}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                          <p className="text-[#4e5c6f] mb-1">Due Date</p>
+                          <p className="font-medium text-[#303030]">
+                            {upcomingPayment.dueDate.toLocaleDateString('en-US', { 
+                              weekday: 'short',
+                              month: 'short', 
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                        <div className="bg-[#f9f9f9] p-3 rounded-lg">
+                          <p className="text-[#4e5c6f] mb-1">Payment Source</p>
+                          <p className="font-medium text-[#303030]">
+                            {upcomingPayment.paymentSource ? (
+                              <>
+                                {upcomingPayment.paymentSource.name}
+                                <span className="text-[#e06c00] ml-1 block text-xs">
+                                  {upcomingPayment.paymentSource.type === 'bank_account' ? 'Bank Account' : 'Card'} 
+                                  •••• {upcomingPayment.paymentSource.identifier}
+                                </span>
+                              </>
+                            ) : (
+                              'Unknown source'
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Additional details */}
+                      <div className="mt-3 pt-3 border-t border-gray-100 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center">
+                          <span className="text-[#4e5c6f] mr-2">Category:</span>
+                          <span className="text-[#303030]">{upcomingPayment.payment.category || 'Uncategorized'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-[#4e5c6f] mr-2">Frequency:</span>
+                          <span className="text-[#303030] flex items-center">
+                            <ArrowPathIcon className="w-3 h-3 mr-1" />
+                            {formatFrequency(upcomingPayment.payment.frequency)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === 'calendar' && (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center space-x-4">
+                    <button 
+                      onClick={toggleViewMode}
+                      className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
+                    >
+                      <CalendarIcon className="w-5 h-5" />
+                      {viewMode === 'month' ? 'Year View' : 'Month View'}
+                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        onClick={goToPrevious} 
+                        className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
+                        aria-label="Previous period"
+                      >
+                        <ChevronLeftIcon className="w-5 h-5" />
+                      </button>
+                      <span className="text-lg font-medium text-[#303030] px-2">
+                        {formatViewDate()}
+                      </span>
+                      <button 
+                        onClick={goToNext} 
+                        className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
+                        aria-label="Next period"
+                      >
+                        <ChevronRightIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
       
-      {/* Payment details tooltip on hover */}
+      {/* Payment details tooltip */}
       {hoverPayment && (
         <div 
           className="fixed bg-white shadow-lg rounded-lg p-4 z-50 border border-gray-200 w-72"
