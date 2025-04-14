@@ -23,7 +23,11 @@ export default function PaymentSources() {
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'delete'>('add');
   const [currentSource, setCurrentSource] = useState<PaymentSource | null>(null);
   const [associatedPayments, setAssociatedPayments] = useState<{id: string, name: string}[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    type: 'bank_account' | 'debit_card' | 'credit_card';
+    identifier: string;
+  }>({
     name: '',
     type: PAYMENT_SOURCE_TYPES.BANK_ACCOUNT,
     identifier: ''

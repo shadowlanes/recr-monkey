@@ -10,14 +10,18 @@ export const TABLES = {
 };
 
 // Payment source types
-export const PAYMENT_SOURCE_TYPES = {
+export type PaymentSourceType = 'bank_account' | 'debit_card' | 'credit_card';
+
+export const PAYMENT_SOURCE_TYPES: Record<string, PaymentSourceType> = {
   BANK_ACCOUNT: 'bank_account',
   DEBIT_CARD: 'debit_card',
   CREDIT_CARD: 'credit_card'
 };
 
 // Payment frequency options
-export const PAYMENT_FREQUENCIES = {
+export type PaymentFrequency = 'weekly' | 'monthly' | '4weeks' | 'yearly';
+
+export const PAYMENT_FREQUENCIES: Record<string, PaymentFrequency> = {
   WEEKLY: 'weekly',
   MONTHLY: 'monthly',
   FOUR_WEEKS: '4weeks',
