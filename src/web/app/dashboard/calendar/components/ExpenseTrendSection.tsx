@@ -14,6 +14,7 @@ import {
 import { PaymentWithConversion } from '../page';
 import { getAllPaymentDatesForDay } from '../calendar-utils';
 import { useState, useMemo } from 'react';
+import { getCategoryColor } from '../../../lib/categoryColors';
 
 ChartJS.register(
   CategoryScale,
@@ -31,22 +32,6 @@ interface ExpenseTrendSectionProps {
   displayCurrency: string;
   formatCurrency: (amount: number, currency: string) => string;
 }
-
-// Add category colors
-const CATEGORY_COLORS = {
-  'Subscription': { color: '#db2777', light: '#fce7f3' },     // Pink
-  'Utilities': { color: '#2563eb', light: '#dbeafe' },        // Blue
-  'Entertainment': { color: '#d97706', light: '#fef3c7' },    // Amber
-  'Insurance': { color: '#059669', light: '#d1fae5' },        // Green
-  'Mortgage/Rent': { color: '#7c3aed', light: '#ede9fe' },    // Purple
-  'Transportation': { color: '#0891b2', light: '#cffafe' },   // Cyan
-  'Health': { color: '#e11d48', light: '#ffe4e6' },          // Red
-  'Education': { color: '#8b5cf6', light: '#f3e8ff' },       // Violet
-  'Savings': { color: '#15803d', light: '#dcfce7' },         // Emerald
-  'Debt': { color: '#b91c1c', light: '#fee2e2' },            // Dark Red
-  'Other': { color: '#475569', light: '#f1f5f9' },           // Slate
-  'Total': { color: '#1e293b', light: '#e2e8f0' }            // Dark slate
-};
 
 export function ExpenseTrendSection({
   convertedPayments,
@@ -156,17 +141,20 @@ export function ExpenseTrendSection({
   const chartData = {
     labels: months.map(m => m.label),
     datasets: [
-      ...selectedCategories.map(category => ({
-        label: `${category} Expenses`,
-        data: monthlyTotalsByCategory[category] || [],
-        borderColor: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]?.color,
-        backgroundColor: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]?.light,
-        fill: true,
-        tension: 0.4,
-        segment: {
-          borderDash: (ctx: any) => ctx.p0DataIndex >= 6 ? [6, 6] : undefined,
-        }
-      })),
+      ...selectedCategories.map(category => {
+        const colors = getCategoryColor(category);
+        return {
+          label: `${category} Expenses`,
+          data: monthlyTotalsByCategory[category] || [],
+          borderColor: colors.color,
+          backgroundColor: colors.light,
+          fill: true,
+          tension: 0.4,
+          segment: {
+            borderDash: (ctx: any) => ctx.p0DataIndex >= 6 ? [6, 6] : undefined,
+          }
+        };
+      }),
       {
         label: 'Monthly Average',
         data: Array(months.length).fill(averageMonthlyExpense),
@@ -201,13 +189,13 @@ export function ExpenseTrendSection({
     <div>
       <div className="flex flex-wrap gap-2 mb-4">
         {categories.map(category => {
-          const categoryColor = CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]?.color;
+          const colors = getCategoryColor(category);
           return (
             <button
               key={category}
               onClick={() => toggleCategory(category)}
               style={{
-                backgroundColor: categoryColor,
+                backgroundColor: colors.color,
                 opacity: selectedCategories.includes(category) ? 1 : 0.2,
                 color: 'white',
                 transition: 'opacity 0.2s ease'
@@ -241,7 +229,7 @@ export function ExpenseTrendSection({
                   <li key={category} className="flex items-center gap-2">
                     <span 
                       className="w-2 h-2 rounded-full" 
-                      style={{ backgroundColor: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]?.color }}
+                      style={{ backgroundColor: getCategoryColor(category).color }}
                     ></span>
                     {category}
                   </li>

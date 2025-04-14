@@ -6,6 +6,7 @@ import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
 import { useMemo } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
+import { getCategoryColor, DEFAULT_CHART_COLORS } from '../../../lib/categoryColors';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -94,15 +95,9 @@ export function CategoriesSection({
       datasets: [
         {
           data: categoryGroups.map(group => group.yearlyTotal),
-          backgroundColor: [
-            '#FF6384',
-            '#36A2EB',
-            '#FFCE56',
-            '#4BC0C0',
-            '#9966FF',
-            '#FF9F40',
-            '#E8E8E8',
-          ],
+          backgroundColor: categoryGroups.map(group => 
+            getCategoryColor(group.category).color || DEFAULT_CHART_COLORS[0]
+          ),
           borderWidth: 1,
         },
       ],
