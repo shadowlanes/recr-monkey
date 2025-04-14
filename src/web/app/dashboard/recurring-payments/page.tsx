@@ -26,8 +26,7 @@ export default function RecurringPayments() {
     error: dataError,
     addRecurringPayment,
     updateRecurringPayment,
-    deleteRecurringPayment,
-    hasPaymentSources
+    deleteRecurringPayment
   } = useData();
   
   // Local UI state
@@ -46,7 +45,7 @@ export default function RecurringPayments() {
 
   const handleAddNew = () => {
     // Check if payment sources exist first
-    if (!hasPaymentSources) {
+    if (paymentSources.length === 0) {
       setError('You need to add at least one payment source before adding a recurring payment.');
       return;
     }

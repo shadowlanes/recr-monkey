@@ -13,9 +13,9 @@ interface DataContextType {
   updatePaymentSource: (updatedSource: PaymentSource) => Promise<void>;
   addPaymentSource: (newSource: Omit<PaymentSource, 'id' | 'created_at'>) => Promise<void>;
   deletePaymentSource: (sourceId: string) => Promise<void>;
-  updateRecurringPayment: (updatedPayment: RecurringPayment) => Promise<void>;
-  addRecurringPayment: (newPayment: Omit<RecurringPayment, 'id' | 'created_at'>) => Promise<void>;
-  deleteRecurringPayment: (paymentId: string) => Promise<void>;
+  updateRecurringPayment: (paymentId: string, updatedPayment: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>) => Promise<boolean>;
+  addRecurringPayment: (newPayment: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>) => Promise<boolean>;
+  deleteRecurringPayment: (paymentId: string) => Promise<boolean>;
   refreshData: () => Promise<void>;
 }
 
@@ -168,7 +168,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Update a recurring payment
-  const updateRecurringPayment = async (updatedPayment: RecurringPayment) => {
+  const updateRecurringPayment = async (paymentId: string, updatedPayment: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>) => {
     try {
       setError(null);
       
@@ -182,7 +182,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           payment_source_id: updatedPayment.payment_source_id,
           start_date: updatedPayment.start_date
         })
-        .eq('id', updatedPayment.id)
+        .eq('id', paymentId)
         .eq('user_id', user?.id)
         .select();
         
@@ -191,10 +191,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (data && data[0]) {
         setRecurringPayments(
           recurringPayments.map(payment => 
-            payment.id === updatedPayment.id ? data[0] : payment
+            payment.id === paymentId ? data[0] : payment
           )
         );
+        return true;
       }
+      return false;
     } catch (error: any) {
       console.error('Error updating recurring payment:', error.message);
       setError('Failed to update recurring payment. Please try again.');
@@ -203,7 +205,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Add a new recurring payment
-  const addRecurringPayment = async (newPayment: Omit<RecurringPayment, 'id' | 'created_at'>) => {
+  const addRecurringPayment = async (newPayment: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>) => {
     try {
       setError(null);
       
@@ -219,7 +221,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       
       if (data && data[0]) {
         setRecurringPayments([...recurringPayments, data[0]]);
+        return true;
       }
+      return false;
     } catch (error: any) {
       console.error('Error adding recurring payment:', error.message);
       setError('Failed to add recurring payment. Please try again.');
@@ -243,6 +247,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setRecurringPayments(
         recurringPayments.filter(payment => payment.id !== paymentId)
       );
+      return true;
     } catch (error: any) {
       console.error('Error deleting recurring payment:', error.message);
       setError('Failed to delete recurring payment. Please try again.');

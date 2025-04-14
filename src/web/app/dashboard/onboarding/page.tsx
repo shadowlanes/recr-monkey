@@ -4,15 +4,14 @@ import React from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { supabase, TABLES } from '../../lib/supabase';
+import { useData } from '../../contexts/data-context';
 import OnboardingGuide from '../../components/onboarding-guide';
 import LoadingAnimation from '../../components/loading-animation';
 
 export default function OnboardingPage() { 
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [hasPaymentSources, setHasPaymentSources] = useState<boolean>(false);
-  const [hasRecurringPayments, setHasRecurringPayments] = useState<boolean>(false);
+  const { paymentSources, recurringPayments, isLoading: dataLoading } = useData();
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Redirect to home if not authenticated
@@ -24,55 +23,24 @@ export default function OnboardingPage() {
 
   // Check if user has any payment sources and recurring payments
   useEffect(() => {
-    if (user) {
-      const checkUserData = async () => {
-        try {
-          setIsLoading(true);
-          
-          // Check payment sources
-          const { data: paymentSourcesData, error: paymentSourcesError } = await supabase
-            .from(TABLES.PAYMENT_SOURCES)
-            .select('id')
-            .eq('user_id', user.id)
-            .limit(1);
-            
-          if (paymentSourcesError) {
-            console.error('Error checking payment sources:', paymentSourcesError.message);
-          } else {
-            const hasPaymentSrc = paymentSourcesData && paymentSourcesData.length > 0;
-            setHasPaymentSources(hasPaymentSrc);
-            
-            // Check for recurring payments
-            const { data: recurringPaymentsData, error: recurringPaymentsError } = await supabase
-              .from(TABLES.RECURRING_PAYMENTS)
-              .select('id')
-              .eq('user_id', user.id)
-              .limit(1);
-              
-            if (recurringPaymentsError) {
-              console.error('Error checking recurring payments:', recurringPaymentsError.message);
-            } else {
-              const hasRecurringPmts = recurringPaymentsData && recurringPaymentsData.length > 0;
-              setHasRecurringPayments(hasRecurringPmts);
-              
-              // If user has both payment sources and recurring payments, redirect to calendar
-              if (hasPaymentSrc && hasRecurringPmts) {
-                router.push('/dashboard/calendar');
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error checking user data:', error);
-        } finally {
-          setIsLoading(false);
+    if (user && !dataLoading) {
+      try {
+        const hasPaymentSrc = paymentSources.length > 0;
+        const hasRecurringPmts = recurringPayments.length > 0;
+        
+        // If user has both payment sources and recurring payments, redirect to calendar
+        if (hasPaymentSrc && hasRecurringPmts) {
+          router.push('/dashboard/calendar');
         }
-      };
-      
-      checkUserData();
+      } catch (error) {
+        console.error('Error checking user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [user, router]);
+  }, [user, router, paymentSources, recurringPayments, dataLoading]);
 
-  if (loading || isLoading) {
+  if (loading || dataLoading || isLoading) {
     return (
       <div className="flex justify-center py-12">
         <LoadingAnimation size="large" />
@@ -87,8 +55,8 @@ export default function OnboardingPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <OnboardingGuide 
-        hasPaymentSources={hasPaymentSources} 
-        hasRecurringPayments={hasRecurringPayments}
+        hasPaymentSources={paymentSources.length > 0} 
+        hasRecurringPayments={recurringPayments.length > 0}
         showButtons={true} 
       />
     </div>
