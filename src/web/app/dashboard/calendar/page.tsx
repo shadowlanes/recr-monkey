@@ -1251,34 +1251,6 @@ export default function Calendar() {
           <CalendarDaysIcon className="w-7 h-7 mr-2 text-[#e06c00]" />
           Calendar View
         </h2>
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={toggleViewMode}
-            className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
-          >
-            <CalendarIcon className="w-5 h-5" />
-            {viewMode === 'month' ? 'Year View' : 'Month View'}
-          </button>
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={goToPrevious} 
-              className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
-              aria-label="Previous period"
-            >
-              <ChevronLeftIcon className="w-5 h-5" />
-            </button>
-            <span className="text-lg font-medium text-[#303030] px-2">
-              {formatViewDate()}
-            </span>
-            <button 
-              onClick={goToNext} 
-              className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
-              aria-label="Next period"
-            >
-              <ChevronRightIcon className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Payment Summary - moved to the top */}
@@ -1362,9 +1334,42 @@ export default function Calendar() {
           </button>
         </div>
       ) : (
-        <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-          {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
-        </div>
+        <>
+          {/* View toggle and navigation controls - Moved here */}
+          <div className="flex justify-between items-center mb-4 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+            <button 
+              onClick={toggleViewMode}
+              className="btn btn-small bg-[#fff0e6] text-[#e06c00] hover:bg-[#ffe2cf] flex items-center gap-1"
+            >
+              <CalendarIcon className="w-5 h-5" />
+              {viewMode === 'month' ? 'Year View' : 'Month View'}
+            </button>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={goToPrevious} 
+                className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
+                aria-label="Previous period"
+              >
+                <ChevronLeftIcon className="w-5 h-5" />
+              </button>
+              <span className="text-lg font-medium text-[#303030] px-2">
+                {formatViewDate()}
+              </span>
+              <button 
+                onClick={goToNext} 
+                className="btn btn-small bg-white border border-gray-200 hover:bg-gray-50"
+                aria-label="Next period"
+              >
+                <ChevronRightIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Calendar display */}
+          <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
+            {viewMode === 'month' ? renderMonthCalendar() : renderYearCalendar()}
+          </div>
+        </>
       )}
       
       {/* Payment details tooltip on hover */}
