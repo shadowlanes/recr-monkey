@@ -23,8 +23,7 @@ export default function Home() {
       }
     } else if (navElement) {
       navElement.innerHTML = `
-        <a href="#auth-section" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600">Sign In</a>
-        <a href="#auth-section" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Sign Up</a>
+        <a href="#auth-section" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Log In</a>
       `;
     }
   }, [user, signOut]);

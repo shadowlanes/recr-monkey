@@ -8,10 +8,7 @@ import { useRouter } from 'next/navigation';
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  sendMagicLink: (email: string) => Promise<void>;
   signInWithSocialProvider: (provider: Provider) => Promise<void>;
   error: string | null;
 };
@@ -101,86 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const signUp = async (email: string, password: string) => {
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      
-      if (error) {
-        throw error;
-      }
-    } catch (error: unknown) {
-      if (error instanceof AuthError) {
-        setError(error.message);
-      } else if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-      throw error;
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        throw error;
-      }
-    } catch (error: unknown) {
-      if (error instanceof AuthError) {
-        setError(error.message);
-      } else if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-      throw error;
-    }
-  };
-
-  // New method for passwordless login with magic link
-  const sendMagicLink = async (email: string) => {
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
-      });
-      
-      if (error) {
-        throw error;
-      }
-    } catch (error: unknown) {
-      if (error instanceof AuthError) {
-        setError(error.message);
-      } else if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-      throw error;
-    }
-  };
-
-  // New method for social login
   const signInWithSocialProvider = async (provider: Provider) => {
     setError(null);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/dashboard/onboarding`,
         },
       });
       
@@ -212,10 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       loading, 
-      signUp, 
-      signIn, 
       signOut, 
-      sendMagicLink, 
       signInWithSocialProvider, 
       error 
     }}>
