@@ -36,8 +36,8 @@ const checkValidation = (req: Request, res: Response): boolean => {
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const paymentSources = await paymentSourceRepository.find({
-      where: { userId: req.user!.id },
-      order: { createdAt: 'DESC' },
+      where: { user_id: req.user!.id },
+      order: { created_at: 'DESC' },
     });
 
     res.json({
@@ -59,7 +59,7 @@ router.get('/:id', authenticateToken, validateUUID, async (req: AuthenticatedReq
 
   try {
     const paymentSource = await paymentSourceRepository.findOne({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id, user_id: req.user!.id },
     });
 
     if (!paymentSource) {
@@ -93,7 +93,7 @@ router.post('/', authenticateToken, validatePaymentSource, async (req: Authentic
       name,
       type,
       identifier,
-      userId: req.user!.id,
+      user_id: req.user!.id,
     });
 
     const savedPaymentSource = await paymentSourceRepository.save(paymentSource);
@@ -119,7 +119,7 @@ router.put('/:id', authenticateToken, validateUUID, validatePaymentSource, async
     const { name, type, identifier } = req.body;
 
     const paymentSource = await paymentSourceRepository.findOne({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id, user_id: req.user!.id },
     });
 
     if (!paymentSource) {
@@ -154,7 +154,7 @@ router.delete('/:id', authenticateToken, validateUUID, async (req: Authenticated
 
   try {
     const paymentSource = await paymentSourceRepository.findOne({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id, user_id: req.user!.id },
     });
 
     if (!paymentSource) {

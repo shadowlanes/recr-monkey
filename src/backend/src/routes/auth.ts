@@ -11,8 +11,8 @@ const userRepository = AppDataSource.getRepository(User);
 const validateRegister = [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('firstName').optional().trim(),
-  body('lastName').optional().trim(),
+  body('first_name').optional().trim(),
+  body('last_name').optional().trim(),
 ];
 
 const validateLogin = [
@@ -57,8 +57,8 @@ router.post('/register', validateRegister, async (req: Request, res: Response) =
     const user = userRepository.create({
       email,
       password: hashedPassword,
-      firstName,
-      lastName,
+      first_name: firstName,
+      last_name: lastName,
     });
 
     const savedUser = await userRepository.save(user);
@@ -75,8 +75,8 @@ router.post('/register', validateRegister, async (req: Request, res: Response) =
         user: {
           id: savedUser.id,
           email: savedUser.email,
-          firstName: savedUser.firstName,
-          lastName: savedUser.lastName,
+          firstName: savedUser.first_name,
+          lastName: savedUser.last_name,
         },
         token,
       },
@@ -127,8 +127,8 @@ router.post('/login', validateLogin, async (req: Request, res: Response) => {
         user: {
           id: user.id,
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          firstName: user.first_name,
+          lastName: user.last_name,
         },
         token,
       },

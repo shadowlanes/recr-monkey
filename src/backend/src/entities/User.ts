@@ -14,23 +14,23 @@ export class User {
   password: string;
 
   @Column({ nullable: true })
-  firstName?: string;
+  first_name?: string;
 
   @Column({ nullable: true })
-  lastName?: string;
+  last_name?: string;
 
   @Column({ default: true })
-  isActive: boolean;
+  is_active: boolean;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at: Date;
 
   @OneToMany(() => PaymentSource, paymentSource => paymentSource.user)
-  paymentSources: PaymentSource[];
+  payment_sources: PaymentSource[];
 
   @OneToMany(() => RecurringPayment, recurringPayment => recurringPayment.user)
-  recurringPayments: RecurringPayment[];
+  recurring_payments: RecurringPayment[];
 }

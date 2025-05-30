@@ -16,7 +16,7 @@ export class PaymentSource {
   id: string;
 
   @Column()
-  userId: string;
+  user_id: string;
 
   @Column()
   name: string;
@@ -32,15 +32,15 @@ export class PaymentSource {
   identifier: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at: Date;
 
-  @ManyToOne(() => User, user => user.paymentSources, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, user => user.payment_sources, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @OneToMany(() => RecurringPayment, recurringPayment => recurringPayment.paymentSource)
+  @OneToMany(() => RecurringPayment, recurringPayment => recurringPayment.payment_source)
   recurringPayments: RecurringPayment[];
 }

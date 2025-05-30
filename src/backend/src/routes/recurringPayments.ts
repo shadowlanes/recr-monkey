@@ -41,9 +41,9 @@ const checkValidation = (req: Request, res: Response): boolean => {
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const recurringPayments = await recurringPaymentRepository.find({
-      where: { userId: req.user!.id },
+      where: { user_id: req.user!.id },
       relations: ['paymentSource'],
-      order: { createdAt: 'DESC' },
+      order: { created_at: 'DESC' },
     });
 
     res.json({
@@ -65,7 +65,7 @@ router.get('/:id', authenticateToken, validateUUID, async (req: AuthenticatedReq
 
   try {
     const recurringPayment = await recurringPaymentRepository.findOne({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id, user_id: req.user!.id },
       relations: ['paymentSource'],
     });
 
@@ -98,7 +98,7 @@ router.post('/', authenticateToken, validateRecurringPayment, async (req: Authen
 
     // Verify that the payment source belongs to the user
     const paymentSource = await paymentSourceRepository.findOne({
-      where: { id: paymentSourceId, userId: req.user!.id },
+      where: { id: paymentSourceId, user_id: req.user!.id },
     });
 
     if (!paymentSource) {
@@ -113,10 +113,10 @@ router.post('/', authenticateToken, validateRecurringPayment, async (req: Authen
       amount,
       currency,
       frequency,
-      paymentSourceId,
-      startDate,
+      payment_source_id: paymentSourceId,
+      start_date: startDate,
       category,
-      userId: req.user!.id,
+      user_id: req.user!.id,
     });
 
     const savedRecurringPayment = await recurringPaymentRepository.save(recurringPayment);
@@ -148,7 +148,7 @@ router.put('/:id', authenticateToken, validateUUID, validateRecurringPayment, as
     const { name, amount, currency, frequency, paymentSourceId, startDate, category } = req.body;
 
     const recurringPayment = await recurringPaymentRepository.findOne({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id, user_id: req.user!.id },
     });
 
     if (!recurringPayment) {
@@ -160,7 +160,7 @@ router.put('/:id', authenticateToken, validateUUID, validateRecurringPayment, as
 
     // Verify that the payment source belongs to the user
     const paymentSource = await paymentSourceRepository.findOne({
-      where: { id: paymentSourceId, userId: req.user!.id },
+      where: { id: paymentSourceId, user_id: req.user!.id },
     });
 
     if (!paymentSource) {
@@ -174,8 +174,8 @@ router.put('/:id', authenticateToken, validateUUID, validateRecurringPayment, as
     recurringPayment.amount = amount;
     recurringPayment.currency = currency;
     recurringPayment.frequency = frequency;
-    recurringPayment.paymentSourceId = paymentSourceId;
-    recurringPayment.startDate = startDate;
+    recurringPayment.payment_source_id = paymentSourceId;
+    recurringPayment.start_date = startDate;
     recurringPayment.category = category;
 
     const updatedRecurringPayment = await recurringPaymentRepository.save(recurringPayment);
@@ -205,7 +205,7 @@ router.delete('/:id', authenticateToken, validateUUID, async (req: Authenticated
 
   try {
     const recurringPayment = await recurringPaymentRepository.findOne({
-      where: { id: req.params.id, userId: req.user!.id },
+      where: { id: req.params.id, user_id: req.user!.id },
     });
 
     if (!recurringPayment) {

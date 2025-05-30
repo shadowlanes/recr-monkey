@@ -15,7 +15,7 @@ export class RecurringPayment {
   id: string;
 
   @Column()
-  userId: string;
+  user_id: string;
 
   @Column()
   name: string;
@@ -34,25 +34,25 @@ export class RecurringPayment {
   frequency: PaymentFrequency;
 
   @Column()
-  paymentSourceId: string;
+  payment_source_id: string;
 
   @Column({ type: 'date' })
-  startDate: Date;
+  start_date: Date;
 
   @Column({ nullable: true })
   category?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at: Date;
 
-  @ManyToOne(() => User, user => user.recurringPayments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, user => user.recurring_payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
   @ManyToOne(() => PaymentSource, paymentSource => paymentSource.recurringPayments, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'paymentSourceId' })
-  paymentSource: PaymentSource;
+  @JoinColumn({ name: 'payment_source_idd' })
+  payment_source: PaymentSource;
 }
