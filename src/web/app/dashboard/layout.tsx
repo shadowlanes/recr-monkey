@@ -2,9 +2,10 @@
 
 import { useAuth } from '../components/auth/auth-provider';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase, TABLES } from '../lib/supabase';
+import * as ReactDOM from 'react-dom/client';
 import LoadingAnimation from '../components/loading-animation';
 import CurrencySelector from '../components/currency-selector';
 
@@ -16,8 +17,11 @@ export default function DashboardLayout({
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [hasRecurringPayments, setHasRecurringPayments] = useState<boolean>(true);
+  const [ setHasRecurringPayments] = useState<boolean>(true);
   const [isLoadingRecurringPayments, setIsLoadingRecurringPayments] = useState<boolean>(true);
+  
+  // Add ref to track the React root
+  const reactRootRef = useRef<any>(null);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -103,11 +107,25 @@ export default function DashboardLayout({
     // Find the currency selector mount point
     const mountPoint = document.getElementById('currency-selector-mount');
     if (mountPoint && typeof window !== 'undefined' && user) {
-      // Use React's createRoot to render the CurrencySelector component
-      const ReactDOM = require('react-dom/client');
+      // Clean up any existing root
+      if (reactRootRef.current) {
+        reactRootRef.current.unmount();
+        reactRootRef.current = null;
+      }
+      
       const root = ReactDOM.createRoot(mountPoint);
+      const root = ReactDOM.createRoot(mountPoint);
+      reactRootRef.current = root;
       root.render(<CurrencySelector />);
     }
+    
+    // Cleanup function to unmount the root when component unmounts or user changes
+    return () => {
+      if (reactRootRef.current) {
+        reactRootRef.current.unmount();
+        reactRootRef.current = null;
+      }
+    };
   }, [user]);
 
   if (loading || isLoadingRecurringPayments) {
