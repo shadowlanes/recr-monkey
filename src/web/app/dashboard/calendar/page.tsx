@@ -27,6 +27,7 @@ import {
   generateMonthCalendarData,
   generateYearCalendarData
 } from './calendar-utils';
+import CurrencySelector from '../../components/currency-selector';
 
 // View mode types
 type CalendarViewMode = 'month' | 'year';
@@ -218,6 +219,10 @@ export default function Calendar() {
           <CalendarDaysIcon className="w-7 h-7 mr-2 text-[#e06c00]" />
           Calendar View
         </h2>
+        <div className="flex items-center space-x-3">
+          <span className="text-sm text-gray-600">Display Currency:</span>
+          <CurrencySelector />
+        </div>
       </div>
 
       <PaymentSummary 

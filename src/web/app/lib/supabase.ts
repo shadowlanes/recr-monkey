@@ -63,52 +63,36 @@ export const getCurrencyRates = async (): Promise<ExchangeRates> => {
   if (typeof window !== 'undefined') {
     const cachedRates = localStorage.getItem('currencyRates');
     if (cachedRates) {
-      const parsedRates = JSON.parse(cachedRates) as ExchangeRates;
-      // Check if rates are still valid (less than 24 hours old)
-      if (parsedRates.expiry > Date.now()) {
-        return parsedRates;
+      const rates: ExchangeRates = JSON.parse(cachedRates);
+      if (Date.now() < rates.expiry) {
+        return rates;
       }
     }
   }
 
-  try {
-    // Fetch new rates from public API
-    // Using exchangerate-api.com as an example (replace with your preferred API)
-    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-    const data = await response.json();
-    
-    // Create rates object with 24-hour expiry
-    const exchangeRates: ExchangeRates = {
-      rates: data.rates,
-      timestamp: Date.now(),
-      expiry: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
-    };
-    
-    // Save to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('currencyRates', JSON.stringify(exchangeRates));
-    }
-    
-    return exchangeRates;
-  } catch (error) {
-    console.error('Error fetching currency rates:', error);
-    
-    // Return fallback rates if fetch fails
-    return {
-      rates: {
-        USD: 1,
-        EUR: 0.92,
-        GBP: 0.79,
-        CAD: 1.37,
-        AUD: 1.51,
-        JPY: 151.78,
-        INR: 83.41,
-        AED: 3.67
-      },
-      timestamp: Date.now(),
-      expiry: Date.now() + 24 * 60 * 60 * 1000
-    };
+  // Fetch new rates (you can implement your preferred API here)
+  // For now, return a default structure
+  const rates: ExchangeRates = {
+    rates: {
+      USD: 1,
+      EUR: 0.85,
+      GBP: 0.73,
+      JPY: 110,
+      CAD: 1.25,
+      AUD: 1.35,
+      INR: 74,
+      AED: 3.67
+    },
+    timestamp: Date.now(),
+    expiry: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+  };
+
+  // Cache the rates
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('currencyRates', JSON.stringify(rates));
   }
+
+  return rates;
 };
 
 // Convert amount from source currency to USD

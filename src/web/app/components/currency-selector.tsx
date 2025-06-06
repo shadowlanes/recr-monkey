@@ -9,9 +9,14 @@ interface CurrencySelectorProps {
 }
 
 export default function CurrencySelector({ className = '' }: CurrencySelectorProps) {
-  const [selectedCurrency, setSelectedCurrency] = useState(getDisplayCurrency());
+  const [selectedCurrency, setSelectedCurrency] = useState('USD'); // Default fallback
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null); // Ref for click outside detection
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Initialize currency on component mount
+  useEffect(() => {
+    setSelectedCurrency(getDisplayCurrency());
+  }, []);
 
   // Handle currency selection from custom dropdown
   const handleCurrencySelect = (newCurrency: string) => {

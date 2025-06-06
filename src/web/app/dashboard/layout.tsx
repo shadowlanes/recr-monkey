@@ -2,12 +2,10 @@
 
 import { useAuth } from '../components/auth/auth-provider';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, TABLES } from '../lib/supabase';
-import * as ReactDOM from 'react-dom/client';
 import LoadingAnimation from '../components/loading-animation';
-import CurrencySelector from '../components/currency-selector';
 
 export default function DashboardLayout({
   children,
@@ -19,9 +17,6 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [ setHasRecurringPayments] = useState<boolean>(true);
   const [isLoadingRecurringPayments, setIsLoadingRecurringPayments] = useState<boolean>(true);
-  
-  // Add ref to track the React root
-  const reactRootRef = useRef<any>(null);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -60,14 +55,12 @@ export default function DashboardLayout({
     }
   }, [user]);
 
-  // Add currency selector and signout handler to navigation when user is logged in
+  // Add signout handler to navigation when user is logged in
   useEffect(() => {
     const navElement = document.getElementById('main-nav');
     if (navElement && user) {
-      // Create a container for the header controls
       navElement.innerHTML = `
         <div class="header-controls flex items-center space-x-3">
-          <div id="currency-selector-container"></div>
           <button id="logout-btn" class="btn btn-small btn-secondary">Logout</button>
         </div>
       `;
@@ -77,56 +70,10 @@ export default function DashboardLayout({
       if (logoutBtn) {
         logoutBtn.addEventListener('click', signOut);
       }
-      
-      // Render the currency selector component
-      const currencySelectorContainer = document.getElementById('currency-selector-container');
-      if (currencySelectorContainer && typeof window !== 'undefined') {
-        // Use a temporary div to render the component
-        const tempDiv = document.createElement('div');
-        tempDiv.className = 'flex items-center';
-        currencySelectorContainer.appendChild(tempDiv);
-        
-        // Add a label for the selector
-        const label = document.createElement('span');
-        label.className = 'text-sm text-gray-600 mr-2';
-        label.textContent = 'Currency:';
-        tempDiv.appendChild(label);
-        
-        // Create a container for the CurrencySelector
-        const selectorContainer = document.createElement('div');
-        selectorContainer.id = 'currency-selector-mount';
-        tempDiv.appendChild(selectorContainer);
-      }
     } else if (navElement) {
       navElement.innerHTML = '';
     }
   }, [user, signOut]);
-
-  // Add the currency selector to the DOM after component mount
-  useEffect(() => {
-    // Find the currency selector mount point
-    const mountPoint = document.getElementById('currency-selector-mount');
-    if (mountPoint && typeof window !== 'undefined' && user) {
-      // Clean up any existing root
-      if (reactRootRef.current) {
-        reactRootRef.current.unmount();
-        reactRootRef.current = null;
-      }
-      
-      const root = ReactDOM.createRoot(mountPoint);
-      const root = ReactDOM.createRoot(mountPoint);
-      reactRootRef.current = root;
-      root.render(<CurrencySelector />);
-    }
-    
-    // Cleanup function to unmount the root when component unmounts or user changes
-    return () => {
-      if (reactRootRef.current) {
-        reactRootRef.current.unmount();
-        reactRootRef.current = null;
-      }
-    };
-  }, [user]);
 
   if (loading || isLoadingRecurringPayments) {
     return (
