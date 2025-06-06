@@ -95,6 +95,30 @@ export const getCurrencyRates = async (): Promise<ExchangeRates> => {
   return rates;
 };
 
+// Currency symbol utility function
+export const getCurrencySymbol = (currency: string): string => {
+  switch (currency) {
+    case 'USD':
+      return '$';
+    case 'EUR':
+      return '€';
+    case 'GBP':
+      return '£';
+    case 'CAD':
+      return 'C$';
+    case 'AUD':
+      return 'A$';
+    case 'JPY':
+      return '¥';
+    case 'INR':
+      return '₹';
+    case 'AED':
+      return 'د.إ';
+    default:
+      return '$';
+  }
+};
+
 // Convert amount from source currency to USD
 export const convertToUSD = async (amount: number, currency: string): Promise<number> => {
   // If already in USD, return as is
