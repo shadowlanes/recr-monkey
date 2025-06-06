@@ -309,12 +309,13 @@ export default function PaymentSources() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Associated Recurring Payments ({associatedPayments.length})
-                      </h3>
-                      <ul className="list-disc pl-5 text-sm text-[#4e5c6f]">
-                        {associatedPayments.map(payment => (
-                          <li key={payment.id}>{payment.name}</li>
-                        ))}
-                      </ul>
+                       </h3>
+                       <ul className="list-disc pl-5 text-sm text-[#4e5c6f]">
+                         {associatedPayments.map(payment => (
+                           <li key={payment.id}>{payment.name}</li>
+                         ))}
+                       </ul>
+                      
                     </div>
                   )}
                   

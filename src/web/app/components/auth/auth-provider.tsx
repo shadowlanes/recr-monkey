@@ -10,6 +10,8 @@ type AuthContextType = {
   loading: boolean;
   signOut: () => Promise<void>;
   signInWithSocialProvider: (provider: Provider) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   error: string | null;
 };
 
@@ -132,12 +134,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+    } catch (error: unknown) {
+      if (error instanceof AuthError) {
+        setError(error.message);
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+      throw error;
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard/onboarding`,
+        },
+      });
+      
+      if (error) {
+        throw error;
+      }
+    } catch (error: unknown) {
+      if (error instanceof AuthError) {
+        setError(error.message);
+      } else if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       loading, 
       signOut, 
-      signInWithSocialProvider, 
+      signInWithSocialProvider,
+      signInWithEmail,
+      signUpWithEmail,
       error 
     }}>
       {children}

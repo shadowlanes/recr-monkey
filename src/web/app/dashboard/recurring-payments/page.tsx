@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useData } from '../../contexts/data-context';
-import { PAYMENT_FREQUENCIES } from '../../lib/supabase';
+import { PAYMENT_FREQUENCIES, getCurrencySymbol } from '../../lib/supabase';
 import { RecurringPayment } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
 import { 
@@ -44,30 +44,6 @@ export default function RecurringPayments() {
     category: 'Other' // Default category
   });
   const [error, setError] = useState<string | null>(null);
-
-  // Add a function to get the currency symbol for a given currency code
-  const getCurrencySymbol = (currency: string) => {
-    switch (currency) {
-      case 'USD':
-        return '$';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-        return '£';
-      case 'CAD':
-        return 'C$';
-      case 'AUD':
-        return 'A$';
-      case 'JPY':
-        return '¥';
-      case 'INR':
-        return '₹';
-      case 'AED':
-        return 'د.إ';
-      default:
-        return '$';
-    }
-  };
 
   const handleAddNew = () => {
     // Check if payment sources exist first
