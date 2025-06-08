@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User, Provider, AuthError } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const userRef = useRef<User | null>(null);
 
   // Check if user has recurring payments
   const checkForRecurringPayments = async (userId: string) => {
@@ -52,15 +53,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw error;
         }
         if (data?.user) {
-          setUser(data.user);
-          
-          // Check for recurring payments and redirect appropriately
-          const hasRecurringPayments = await checkForRecurringPayments(data.user.id);
-          if (hasRecurringPayments) {
-            router.push('/dashboard/calendar');
-          } else {
-            // Redirect to the dedicated onboarding page
-            router.push('/dashboard/onboarding');
+          // Only set user if it's not already set (login event)
+          if (!userRef.current) {
+            setUser(data.user);
+            userRef.current = data.user;
+            const hasRecurringPayments = await checkForRecurringPayments(data.user.id);
+            if (hasRecurringPayments) {
+              router.push('/dashboard/calendar');
+            } else {
+              router.push('/dashboard/onboarding');
+            }
           }
         }
       } catch (error) {
@@ -73,22 +75,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
+        console.log('Auth state change event:', event);
+        // Only update on actual login
+        if (event === 'SIGNED_IN' && session?.user && !userRef.current) {
+          console.log('User Set since userRef check failed:', event);
           setUser(session.user);
-          
-          // On sign in or sign up, check if user has recurring payments and redirect appropriately
-          if (event === 'SIGNED_IN') {
-            const hasRecurringPayments = await checkForRecurringPayments(session.user.id);
-            if (hasRecurringPayments) {
-              router.push('/dashboard/calendar');
-            } else {
-              // Redirect to the dedicated onboarding page
-              router.push('/dashboard/onboarding');
-            }
+          userRef.current = session.user;
+          console.log('Received Event:', event);
+          const hasRecurringPayments = await checkForRecurringPayments(session.user.id);
+          if (hasRecurringPayments) {
+            router.push('/dashboard/calendar');
+          } else {
+            router.push('/dashboard/onboarding');
           }
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          userRef.current = null;
         }
+        // Ignore other events (like TOKEN_REFRESHED) to avoid redundant state updates
         setLoading(false);
       }
     );
