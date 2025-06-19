@@ -1,14 +1,17 @@
 import { PAYMENT_FREQUENCIES } from '../../lib/supabase';
-import { PaymentDateItem, RecurringPayment } from '../../types';
+import { PaymentDateItem, RecurringPayment, PaymentSource } from '../../types';
 
 // Get all payment occurrences for a day
 export const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Date): Date[] => {
   const paymentDates: Date[] = [];
-  const startDate = new Date(payment.start_date);
   
-  if (startDate.getFullYear() > dayDate.getFullYear() || 
-      (startDate.getFullYear() === dayDate.getFullYear() && 
-       startDate.getMonth() > dayDate.getMonth())) {
+  // Parse the start date and ensure we're working in local timezone
+  const startDateStr = payment.start_date;
+  const [year, month, day] = startDateStr.split('-').map(Number);
+  const startDate = new Date(year, month - 1, day); // month is 0-indexed
+  
+  // Check if the start date is after the target date
+  if (startDate > dayDate) {
     return paymentDates;
   }
   
@@ -37,8 +40,14 @@ export const getAllPaymentDatesForDay = (payment: RecurringPayment, dayDate: Dat
     }
     
     case PAYMENT_FREQUENCIES.MONTHLY: {
-      if (startDate.getDate() === dayDate.getDate()) {
+      // For monthly payments, check if the day of month matches
+      const startDay = startDate.getDate();
+      const targetDay = dayDate.getDate();
+      
+      if (startDay === targetDay) {
         const paymentDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+        
+        // Ensure the payment date is on or after the start date
         if (paymentDate >= startDate) {
           paymentDates.push(paymentDate);
         }
@@ -124,7 +133,7 @@ interface CalendarDay {
 export const generateMonthCalendarData = (
   currentDate: Date,
   recurringPayments: RecurringPayment[],
-  paymentSources: any[]
+  paymentSources: PaymentSource[]
 ): CalendarDay[] => {
   const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
