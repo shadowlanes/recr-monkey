@@ -151,15 +151,79 @@ NEXT_PUBLIC_URL=http://localhost:3000
 ### Migration Strategy
 
 The backend is configured to automatically run migrations before starting:
-- `prestart` script in `package.json` runs both application and better-auth migrations
+- `startDocker` script in `package.json` runs both application and better-auth migrations
 - Ensures database schema is always up-to-date on each deployment
 - Zero-downtime deployments with automatic schema updates
 
-### Frontend Deployment
+### Frontend Deployment (Cloudflare Pages)
 
-Deploy the Next.js frontend separately (Vercel recommended):
-1. Set `NEXT_PUBLIC_API_URL=https://api.recr.shadowlanes.com`
-2. Configure domain to `recr.shadowlanes.com`
+#### Prerequisites
+1. Cloudflare account
+2. Domain configured: `recr.shadowlanes.com`
+3. Backend already deployed to Railway at `api.recr.shadowlanes.com`
+
+#### Deployment Steps
+
+1. **Push your code to GitHub** (if not already):
+   ```bash
+   git push origin main
+   ```
+
+2. **Connect to Cloudflare Pages:**
+   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
+   - Navigate to **Workers & Pages** → **Create application** → **Pages**
+   - Connect your GitHub repository
+   - Select the `recr-monkey` repository
+
+3. **Configure build settings:**
+   - **Project name:** `recr-monkey`
+   - **Production branch:** `main`
+   - **Framework preset:** Next.js
+   - **Build command:** `npm run build`
+   - **Build output directory:** `.next`
+   - **Root directory:** `src/web`
+
+4. **Set environment variables:**
+   Click on **Environment variables** and add:
+   ```
+   NEXT_PUBLIC_API_URL=https://api.recr.shadowlanes.com
+   ```
+
+5. **Configure custom domain:**
+   - After deployment, go to **Custom domains**
+   - Add `recr.shadowlanes.com`
+   - Update your DNS records as instructed by Cloudflare
+
+6. **Deploy:**
+   - Click **Save and Deploy**
+   - Cloudflare will build and deploy your application
+
+#### Important Notes for Cloudflare Pages
+
+- **Static Export:** Cloudflare Pages works best with Next.js static exports or with their Next.js runtime
+- **Environment Variables:** All API URLs must use `NEXT_PUBLIC_` prefix to be accessible in the browser
+- **CORS:** Ensure your backend at `api.recr.shadowlanes.com` allows requests from `recr.shadowlanes.com`
+- **Automatic Deployments:** Every push to `main` branch will trigger a new deployment
+
+#### Alternative: Using Wrangler CLI
+
+You can also deploy using Cloudflare's CLI:
+
+```bash
+cd src/web
+
+# Install Wrangler
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+
+# Deploy
+npx @cloudflare/next-on-pages@1
+
+# Or use their Pages integration
+wrangler pages deploy .next --project-name=recr-monkey
+```
 
 ### CORS Configuration
 
