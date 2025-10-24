@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useData } from '../../contexts/data-context';
-import { PAYMENT_FREQUENCIES, getCurrencySymbol } from '../../lib/supabase';
+import { PAYMENT_FREQUENCIES, getCurrencySymbol } from '../../lib/constants';
 import { RecurringPayment } from '../../types';
 import LoadingAnimation from '../../components/loading-animation';
 import { 

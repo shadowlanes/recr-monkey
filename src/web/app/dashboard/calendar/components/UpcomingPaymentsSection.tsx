@@ -2,7 +2,7 @@
 
 import { CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { RecurringPayment } from '@/app/types';
-import { PAYMENT_FREQUENCIES } from '@/app/lib/supabase';
+import { PAYMENT_FREQUENCIES } from '@/app/lib/constants';
 import { useCallback } from 'react';
 
 interface UpcomingPaymentsSectionProps {

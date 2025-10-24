@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { SUPPORTED_CURRENCIES, getDisplayCurrency, saveDisplayCurrency } from '../lib/supabase';
+import { SUPPORTED_CURRENCIES, getDisplayCurrency, saveDisplayCurrency } from '../lib/constants';
 import { ChevronDownIcon } from '@heroicons/react/24/solid'; // Use solid icon for button
 
 interface CurrencySelectorProps {
