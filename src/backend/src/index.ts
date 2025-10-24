@@ -44,6 +44,11 @@ async function initializeDatabase() {
   }
 }
 
+// Health check endpoint
+app.get('/ping', (req, res) => {
+  res.json({ message: 'pong' });
+});
+
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/recurring-payments', recurringPaymentsRouter);
