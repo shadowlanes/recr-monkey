@@ -1,4 +1,4 @@
-import { PAYMENT_FREQUENCIES } from '../../lib/supabase';
+import { PAYMENT_FREQUENCIES } from '../../lib/constants';
 import { PaymentDateItem, RecurringPayment, PaymentSource } from '../../types';
 
 // Get all payment occurrences for a day

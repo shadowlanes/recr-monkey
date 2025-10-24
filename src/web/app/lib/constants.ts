@@ -1,8 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
 // Database table names
 export const TABLES = {
   PAYMENT_SOURCES: 'payment_sources',
@@ -170,6 +165,3 @@ export const convertCurrency = async (amount: number, fromCurrency: string, toCu
     return amount; // Return original amount on error
   }
 };
-
-// Create a single supabase client for the entire app
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);

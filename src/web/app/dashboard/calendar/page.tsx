@@ -6,7 +6,7 @@ import {
   convertToUSD, 
   convertCurrency,
   getDisplayCurrency
-} from '../../lib/supabase';
+} from '../../lib/constants';
 import { PaymentDateItem, RecurringPayment } from '../../types';
 import { useData } from '../../contexts/data-context';
 import LoadingAnimation from '../../components/loading-animation';

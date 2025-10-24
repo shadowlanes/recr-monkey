@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
-import { PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
+import { PAYMENT_SOURCE_TYPES } from '../../lib/constants';
 import { PaymentSource } from '../../types';
 import { useData } from '../../contexts/data-context';
 import LoadingAnimation from '../../components/loading-animation';

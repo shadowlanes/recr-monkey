@@ -8,7 +8,8 @@ import {
 import { RecurringPayment, PaymentSource } from '../../../types';
 
 // Mock the PAYMENT_FREQUENCIES constant
-jest.mock('../../../lib/supabase', () => ({
+// Mock the constants module instead of supabase
+jest.mock('../../../lib/constants', () => ({
   PAYMENT_FREQUENCIES: {
     WEEKLY: 'weekly',
     MONTHLY: 'monthly',

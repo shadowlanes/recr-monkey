@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { BanknotesIcon, CreditCardIcon, CurrencyDollarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { PaymentWithConversion, PaymentSource } from '../../../types';
-import { PAYMENT_FREQUENCIES } from '../../../lib/supabase';
+import { PAYMENT_FREQUENCIES } from '../../../lib/constants';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import { DEFAULT_CHART_COLORS } from '../../../lib/categoryColors';
