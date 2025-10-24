@@ -28,7 +28,7 @@ export const auth = betterAuth({
   },
   trustedOrigins: [
     "http://localhost:3000",
-    process.env.FRONTEND_URL || "http://localhost:3000"
+    "https://recr.shadowlanes.com"
   ],
 });
 
