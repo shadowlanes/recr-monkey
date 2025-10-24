@@ -6,11 +6,25 @@ import recurringPaymentsRouter from './recurringPayments';
 import { runMigrations } from './database';
 
 const app = express();
-const port = 3001;
+const port = parseInt(process.env.PORT || '3001', 10);
 
-// CORS configuration for credentials
+// CORS configuration for development and production
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://recr.shadowlanes.com'
+];
+
 app.use(cors({
-  origin: process.env.NEXT_PUBLIC_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
