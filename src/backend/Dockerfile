@@ -2,7 +2,7 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-RUN npm init -y && npm install express
+RUN npm init -y && npm install express cors
 
 COPY . .
 
