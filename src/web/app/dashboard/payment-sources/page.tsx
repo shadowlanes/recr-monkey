@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../components/auth/auth-provider';
-import { PAYMENT_SOURCE_TYPES, TABLES, supabase } from '../../lib/supabase';
+import { PAYMENT_SOURCE_TYPES } from '../../lib/supabase';
 import { PaymentSource } from '../../types';
 import { useData } from '../../contexts/data-context';
 import LoadingAnimation from '../../components/loading-animation';
@@ -11,7 +11,8 @@ import { PencilIcon, TrashIcon, PlusIcon, XMarkIcon, CreditCardIcon, BanknotesIc
 export default function PaymentSources() { 
   const { user } = useAuth();
   const { 
-    paymentSources, 
+    paymentSources,
+    recurringPayments,
     isLoading, 
     error: contextError,
     addPaymentSource,
@@ -54,20 +55,12 @@ export default function PaymentSources() {
     setModalMode('edit');
     setCurrentSource(source);
     
-    // Check for associated payments
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .select('id, name')
-        .eq('payment_source_id', source.id);
-        
-      if (error) throw error;
-      
-      setAssociatedPayments(data || []);
-    } catch (error: any) {
-      console.error('Error fetching associated payments:', error.message);
-      setAssociatedPayments([]);
-    }
+    // Check for associated payments in the recurringPayments from context
+    const associatedPaymentsList = recurringPayments
+      .filter(payment => payment.payment_source_id === source.id)
+      .map(payment => ({ id: payment.id, name: payment.name }));
+    
+    setAssociatedPayments(associatedPaymentsList);
     
     setIsModalOpen(true);
   };
