@@ -8,6 +8,7 @@ RUN npm install
 
 COPY src ./src
 COPY migrations ./migrations
+COPY migrate.js ./
 
 RUN npm run build
 
