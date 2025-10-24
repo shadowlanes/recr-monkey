@@ -1,6 +1,9 @@
 // API configuration
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Import types
+import { PaymentSource, RecurringPayment } from '../types';
+
 // User type matching backend
 export interface User {
   id: string;
@@ -133,6 +136,145 @@ export const api = {
   // Get current stored user without API call
   getCurrentUser(): User | null {
     return storage.getUser();
+  },
+
+  // Payment Sources endpoints
+  async getPaymentSources(): Promise<PaymentSource[]> {
+    const response = await fetch(`${API_URL}/api/payment-sources`);
+    const result: ApiResponse<PaymentSource[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return result.data || [];
+  },
+
+  async createPaymentSource(source: { name: string; type: string; identifier: string }): Promise<PaymentSource> {
+    const response = await fetch(`${API_URL}/api/payment-sources`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(source)
+    });
+    
+    const result: ApiResponse<PaymentSource[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return result.data?.[0] as PaymentSource;
+  },
+
+  async updatePaymentSource(id: string, source: { name: string; type: string; identifier: string }): Promise<PaymentSource> {
+    const response = await fetch(`${API_URL}/api/payment-sources/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(source)
+    });
+    
+    const result: ApiResponse<PaymentSource[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return result.data?.[0] as PaymentSource;
+  },
+
+  async deletePaymentSource(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/payment-sources/${id}`, {
+      method: 'DELETE'
+    });
+    
+    const result: ApiResponse<null> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  },
+
+  // Recurring Payments endpoints
+  async getRecurringPayments(): Promise<RecurringPayment[]> {
+    const response = await fetch(`${API_URL}/api/recurring-payments`);
+    const result: ApiResponse<RecurringPayment[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return result.data || [];
+  },
+
+  async checkRecurringPayments(): Promise<boolean> {
+    const response = await fetch(`${API_URL}/api/recurring-payments/check`);
+    const result: ApiResponse<RecurringPayment[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return (result.data || []).length > 0;
+  },
+
+  async createRecurringPayment(payment: {
+    name: string;
+    amount: number;
+    currency: string;
+    frequency: string;
+    payment_source_id: string;
+    start_date: string;
+    category: string;
+  }): Promise<RecurringPayment> {
+    const response = await fetch(`${API_URL}/api/recurring-payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payment)
+    });
+    
+    const result: ApiResponse<RecurringPayment[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return result.data?.[0] as RecurringPayment;
+  },
+
+  async updateRecurringPayment(id: string, payment: {
+    name: string;
+    amount: number;
+    currency: string;
+    frequency: string;
+    payment_source_id: string;
+    start_date: string;
+    category: string;
+  }): Promise<RecurringPayment> {
+    const response = await fetch(`${API_URL}/api/recurring-payments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payment)
+    });
+    
+    const result: ApiResponse<RecurringPayment[]> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    return result.data?.[0] as RecurringPayment;
+  },
+
+  async deleteRecurringPayment(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/recurring-payments/${id}`, {
+      method: 'DELETE'
+    });
+    
+    const result: ApiResponse<null> = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
   }
 };
 

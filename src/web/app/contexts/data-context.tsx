@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../components/auth/auth-provider';
-import { supabase, TABLES } from '../lib/supabase';
+import { api } from '../lib/api-client';
 import { RecurringPayment, PaymentSource } from '../types';
 
 interface DataContextType {
@@ -42,27 +42,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       
       // Load payment sources
-      const { data: sourcesData, error: sourcesError } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-        
-      if (sourcesError) throw sourcesError;
+      const sourcesData = await api.getPaymentSources();
       setPaymentSources(sourcesData || []);
       
       // Load recurring payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-        
-      if (paymentsError) throw paymentsError;
+      const paymentsData = await api.getRecurringPayments();
       setRecurringPayments(paymentsData || []);
       
-    } catch (error: any) {
-      console.error('Error loading data:', error.message);
+    } catch (error: unknown) {
+      console.error('Error loading data:', error);
       setError('Failed to load data. Please try again.');
     } finally {
       setIsLoading(false);
@@ -79,28 +67,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      const { data, error } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .update({
-          name: updatedSource.name,
-          type: updatedSource.type,
-          identifier: updatedSource.identifier
-        })
-        .eq('id', updatedSource.id)
-        .eq('user_id', user?.id)
-        .select();
-        
-      if (error) throw error;
+      const data = await api.updatePaymentSource(updatedSource.id, {
+        name: updatedSource.name,
+        type: updatedSource.type,
+        identifier: updatedSource.identifier
+      });
       
-      if (data && data[0]) {
+      if (data) {
         setPaymentSources(
           paymentSources.map(source => 
-            source.id === updatedSource.id ? data[0] : source
+            source.id === updatedSource.id ? data : source
           )
         );
       }
-    } catch (error: any) {
-      console.error('Error updating payment source:', error.message);
+    } catch (error: unknown) {
+      console.error('Error updating payment source:', error);
       setError('Failed to update payment source. Please try again.');
       throw error;
     }
@@ -111,21 +92,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      const { data, error } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .insert([{
-          ...newSource,
-          user_id: user?.id
-        }])
-        .select();
-        
-      if (error) throw error;
+      const data = await api.createPaymentSource({
+        name: newSource.name,
+        type: newSource.type,
+        identifier: newSource.identifier
+      });
       
-      if (data && data[0]) {
-        setPaymentSources([...paymentSources, data[0]]);
+      if (data) {
+        setPaymentSources([...paymentSources, data]);
       }
-    } catch (error: any) {
-      console.error('Error adding payment source:', error.message);
+    } catch (error: unknown) {
+      console.error('Error adding payment source:', error);
       setError('Failed to add payment source. Please try again.');
       throw error;
     }
@@ -136,33 +113,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      // Check if payment source is used by any recurring payments
-      const { data: associatedPayments, error: checkError } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .select('id, name')
-        .eq('payment_source_id', sourceId);
-        
-      if (checkError) throw checkError;
-      
-      if (associatedPayments && associatedPayments.length > 0) {
-        throw new Error(`This payment source is used by ${associatedPayments.length} recurring payment(s). Please update those payments first.`);
-      }
-
-      // Delete the payment source
-      const { error } = await supabase
-        .from(TABLES.PAYMENT_SOURCES)
-        .delete()
-        .eq('id', sourceId)
-        .eq('user_id', user?.id);
-        
-      if (error) throw error;
+      await api.deletePaymentSource(sourceId);
       
       setPaymentSources(
         paymentSources.filter(source => source.id !== sourceId)
       );
-    } catch (error: any) {
-      console.error('Error deleting payment source:', error.message);
-      setError(error.message || 'Failed to delete payment source. Please try again.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete payment source. Please try again.';
+      console.error('Error deleting payment source:', error);
+      setError(errorMessage);
       throw error;
     }
   };
@@ -172,34 +131,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      const { data, error } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .update({
-          name: updatedPayment.name,
-          amount: updatedPayment.amount,
-          currency: updatedPayment.currency,
-          frequency: updatedPayment.frequency,
-          payment_source_id: updatedPayment.payment_source_id,
-          start_date: updatedPayment.start_date,
-          category: updatedPayment.category // Add category
-        })
-        .eq('id', paymentId)
-        .eq('user_id', user?.id)
-        .select();
-        
-      if (error) throw error;
+      const data = await api.updateRecurringPayment(paymentId, {
+        name: updatedPayment.name,
+        amount: updatedPayment.amount,
+        currency: updatedPayment.currency,
+        frequency: updatedPayment.frequency,
+        payment_source_id: updatedPayment.payment_source_id,
+        start_date: updatedPayment.start_date,
+        category: updatedPayment.category
+      });
       
-      if (data && data[0]) {
+      if (data) {
         setRecurringPayments(
           recurringPayments.map(payment => 
-            payment.id === paymentId ? data[0] : payment
+            payment.id === paymentId ? data : payment
           )
         );
         return true;
       }
       return false;
-    } catch (error: any) {
-      console.error('Error updating recurring payment:', error.message);
+    } catch (error: unknown) {
+      console.error('Error updating recurring payment:', error);
       setError('Failed to update recurring payment. Please try again.');
       throw error;
     }
@@ -210,23 +162,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      const { data, error } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .insert([{
-          ...newPayment,
-          user_id: user?.id
-        }])
-        .select();
-        
-      if (error) throw error;
+      const data = await api.createRecurringPayment({
+        name: newPayment.name,
+        amount: newPayment.amount,
+        currency: newPayment.currency,
+        frequency: newPayment.frequency,
+        payment_source_id: newPayment.payment_source_id,
+        start_date: newPayment.start_date,
+        category: newPayment.category
+      });
       
-      if (data && data[0]) {
-        setRecurringPayments([...recurringPayments, data[0]]);
+      if (data) {
+        setRecurringPayments([...recurringPayments, data]);
         return true;
       }
       return false;
-    } catch (error: any) {
-      console.error('Error adding recurring payment:', error.message);
+    } catch (error: unknown) {
+      console.error('Error adding recurring payment:', error);
       setError('Failed to add recurring payment. Please try again.');
       throw error;
     }
@@ -237,20 +189,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      const { error } = await supabase
-        .from(TABLES.RECURRING_PAYMENTS)
-        .delete()
-        .eq('id', paymentId)
-        .eq('user_id', user?.id);
-        
-      if (error) throw error;
+      await api.deleteRecurringPayment(paymentId);
       
       setRecurringPayments(
         recurringPayments.filter(payment => payment.id !== paymentId)
       );
       return true;
-    } catch (error: any) {
-      console.error('Error deleting recurring payment:', error.message);
+    } catch (error: unknown) {
+      console.error('Error deleting recurring payment:', error);
       setError('Failed to delete recurring payment. Please try again.');
       throw error;
     }
