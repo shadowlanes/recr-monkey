@@ -4,17 +4,21 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_SUPABASE_URL=https://qqgrckeazwunfaoujjkt.supabase.co
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxZ3Jja2Vhend1bmZhb3Vqamt0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1MjE4MDAsImV4cCI6MjA2MDA5NzgwMH0.Ssh7Z-RiQeb1hVlsdcABZufCMwrozepxchVwl_eamTo
-      - NEXT_PUBLIC_API_URL=http://backend:3001
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
     depends_on:
-      - postgres
       - backend
 
   backend:
     build: ./backend
     ports:
       - "3001:3001"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=recr_monkey_db
+      - PORT=3001
     depends_on:
       - postgres
 
