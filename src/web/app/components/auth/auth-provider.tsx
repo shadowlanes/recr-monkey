@@ -11,7 +11,7 @@ type AuthContextType = {
   loading: boolean;
   signOut: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
   error: string | null;
 };
 
@@ -25,9 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const userRef = useRef<User | null>(null);
 
   // Check if user has recurring payments
-  const checkForRecurringPayments = async (userId: string) => {
+  const checkForRecurringPayments = async (_userId: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/recurring-payments/check`);
+      const response = await fetch(`${API_URL}/api/recurring-payments/check`, {
+        credentials: 'include'
+      });
       const result = await response.json();
       
       if (result.error) {
@@ -95,10 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string) => {
+  const signUpWithEmail = async (email: string, password: string, name?: string) => {
     setError(null);
     try {
-      const { user: newUser } = await api.signUp(email, password);
+      const { user: newUser } = await api.signUp(email, password, name);
       setUser(newUser);
       userRef.current = newUser;
       

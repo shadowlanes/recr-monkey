@@ -4,14 +4,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 // Import types
 import { PaymentSource, RecurringPayment } from '../types';
 
-// User type matching backend
+// User type matching better-auth backend
 export interface User {
   id: string;
   email: string;
-  user_metadata: Record<string, any>;
-  app_metadata: Record<string, any>;
-  aud: string;
-  created_at: string;
+  name?: string;
+  image?: string | null;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Generic API response type
@@ -20,9 +21,14 @@ interface ApiResponse<T> {
   error: { message: string } | null;
 }
 
+// Better-auth response types
+interface AuthResponse {
+  token: string;
+  user: User;
+}
+
 // Storage keys
 const USER_KEY = 'auth_user';
-const SESSION_KEY = 'auth_session';
 
 // Storage helpers
 const storage = {
@@ -39,76 +45,56 @@ const storage = {
       localStorage.removeItem(USER_KEY);
     }
   },
-  getSession: (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(SESSION_KEY);
-  },
-  setSession: (token: string | null) => {
-    if (typeof window === 'undefined') return;
-    if (token) {
-      localStorage.setItem(SESSION_KEY, token);
-    } else {
-      localStorage.removeItem(SESSION_KEY);
-    }
-  },
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(SESSION_KEY);
   }
 };
 
 // API client
 export const api = {
-  // Auth endpoints
-  async signUp(email: string, password: string): Promise<{ user: User; session: any }> {
-    const response = await fetch(`${API_URL}/api/auth/signup`, {
+  // Auth endpoints (better-auth)
+  async signUp(email: string, password: string, name?: string): Promise<{ user: User }> {
+    const response = await fetch(`${API_URL}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      credentials: 'include', // Important: Include cookies for session
+      body: JSON.stringify({ email, password, name })
     });
     
-    const result: ApiResponse<{ user: User; session: any }> = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error.message);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to sign up');
     }
     
-    if (result.data) {
-      storage.setUser(result.data.user);
-      storage.setSession(result.data.session.access_token);
-      return result.data;
-    }
-    
-    throw new Error('Unexpected response from server');
+    const result: AuthResponse = await response.json();
+    storage.setUser(result.user);
+    return { user: result.user };
   },
 
-  async signIn(email: string, password: string): Promise<{ user: User; session: any }> {
-    const response = await fetch(`${API_URL}/api/auth/signin`, {
+  async signIn(email: string, password: string): Promise<{ user: User }> {
+    const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Important: Include cookies for session
       body: JSON.stringify({ email, password })
     });
     
-    const result: ApiResponse<{ user: User; session: any }> = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error.message);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to sign in');
     }
     
-    if (result.data) {
-      storage.setUser(result.data.user);
-      storage.setSession(result.data.session.access_token);
-      return result.data;
-    }
-    
-    throw new Error('Unexpected response from server');
+    const result: AuthResponse = await response.json();
+    storage.setUser(result.user);
+    return { user: result.user };
   },
 
   async signOut(): Promise<void> {
-    await fetch(`${API_URL}/api/auth/signout`, {
+    await fetch(`${API_URL}/api/auth/sign-out`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
     });
     
     storage.clear();
@@ -121,13 +107,25 @@ export const api = {
       return cachedUser;
     }
     
-    // If no cached user, check with server
-    const response = await fetch(`${API_URL}/api/auth/user`);
-    const result: ApiResponse<{ user: User }> = await response.json();
-    
-    if (result.data?.user) {
-      storage.setUser(result.data.user);
-      return result.data.user;
+    // If no cached user, check session with server
+    try {
+      const response = await fetch(`${API_URL}/api/auth/get-session`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const result = await response.json();
+      
+      if (result.user) {
+        storage.setUser(result.user);
+        return result.user;
+      }
+    } catch (error) {
+      console.error('Error fetching user session:', error);
     }
     
     return null;
@@ -140,7 +138,9 @@ export const api = {
 
   // Payment Sources endpoints
   async getPaymentSources(): Promise<PaymentSource[]> {
-    const response = await fetch(`${API_URL}/api/payment-sources`);
+    const response = await fetch(`${API_URL}/api/payment-sources`, {
+      credentials: 'include' // Include cookies for authentication
+    });
     const result: ApiResponse<PaymentSource[]> = await response.json();
     
     if (result.error) {
@@ -154,6 +154,7 @@ export const api = {
     const response = await fetch(`${API_URL}/api/payment-sources`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(source)
     });
     
@@ -170,6 +171,7 @@ export const api = {
     const response = await fetch(`${API_URL}/api/payment-sources/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(source)
     });
     
@@ -184,7 +186,8 @@ export const api = {
 
   async deletePaymentSource(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/api/payment-sources/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include'
     });
     
     const result: ApiResponse<null> = await response.json();
@@ -196,7 +199,9 @@ export const api = {
 
   // Recurring Payments endpoints
   async getRecurringPayments(): Promise<RecurringPayment[]> {
-    const response = await fetch(`${API_URL}/api/recurring-payments`);
+    const response = await fetch(`${API_URL}/api/recurring-payments`, {
+      credentials: 'include'
+    });
     const result: ApiResponse<RecurringPayment[]> = await response.json();
     
     if (result.error) {
@@ -207,7 +212,9 @@ export const api = {
   },
 
   async checkRecurringPayments(): Promise<boolean> {
-    const response = await fetch(`${API_URL}/api/recurring-payments/check`);
+    const response = await fetch(`${API_URL}/api/recurring-payments/check`, {
+      credentials: 'include'
+    });
     const result: ApiResponse<RecurringPayment[]> = await response.json();
     
     if (result.error) {
@@ -229,6 +236,7 @@ export const api = {
     const response = await fetch(`${API_URL}/api/recurring-payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payment)
     });
     
@@ -253,6 +261,7 @@ export const api = {
     const response = await fetch(`${API_URL}/api/recurring-payments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payment)
     });
     
@@ -267,7 +276,8 @@ export const api = {
 
   async deleteRecurringPayment(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/api/recurring-payments/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include'
     });
     
     const result: ApiResponse<null> = await response.json();

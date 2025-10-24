@@ -8,8 +8,14 @@ import { runMigrations } from './database';
 const app = express();
 const port = 3001;
 
-// Middleware
-app.use(cors());
+// CORS configuration for credentials
+app.use(cors({
+  origin: process.env.NEXT_PUBLIC_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // Initialize database and run migrations

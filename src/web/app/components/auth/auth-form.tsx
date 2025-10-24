@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 import { useAuth } from './auth-provider';
 import LoadingAnimation from '../loading-animation';
-import { EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, LockClosedIcon, UserIcon } from '@heroicons/react/24/outline';
 
 export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,8 +33,7 @@ export default function AuthForm() {
     setIsLoading(true);
     try {
       if (isSignUp) {
-        await signUpWithEmail(email, password);
-        setEmailError('Check your email for a confirmation link!');
+        await signUpWithEmail(email, password, name || undefined);
       } else {
         await signInWithEmail(email, password);
       }
@@ -42,14 +42,6 @@ export default function AuthForm() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setEmailError('');
-    setIsSignUp(false);
   };
 
   return (
@@ -69,6 +61,27 @@ export default function AuthForm() {
         )}
         
         <form onSubmit={handleEmailAuth} className="space-y-4">
+          {isSignUp && (
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Name
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <UserIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter your name (optional)"
+                />
+              </div>
+            </div>
+          )}
+          
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email Address
