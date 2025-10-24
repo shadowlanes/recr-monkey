@@ -17,7 +17,7 @@ async function initializeDatabase() {
   try {
     console.log('Initializing database...');
     await runMigrations();
-    console.log('Database initialized successfully');
+    console.log('Database migrations completed');
   } catch (error) {
     console.error('Failed to initialize database:', error);
     process.exit(1);

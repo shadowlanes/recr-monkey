@@ -19,6 +19,13 @@ services:
       - DB_PASSWORD=password
       - DB_NAME=recr_monkey_db
       - PORT=3001
+      - DATABASE_URL=postgresql://user:password@postgres:5432/recr_monkey_db
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-secret-key-change-in-production}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:3001/api/auth/callback/google}
+      - BETTER_AUTH_URL=http://localhost:3001
+      - NEXT_PUBLIC_URL=http://localhost:3000
     depends_on:
       - postgres
 

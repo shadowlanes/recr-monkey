@@ -1,17 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { RecurringPaymentsDB } from './db-operations';
 import { ApiResponse } from './types';
+import { requireAuth } from './middleware';
 
 const router = Router();
 
-// Mock user ID (using the existing user from database)
-const MOCK_USER_ID = '02f43aab-5e7b-4231-ac3f-c19189508235';
+// Apply auth middleware to all routes
+router.use(requireAuth);
 
 // Get all recurring payments
 router.get('/', async (req: Request, res: Response) => {
   try {
-    console.log('Get recurring payments');
-    const payments = await RecurringPaymentsDB.getAll(MOCK_USER_ID);
+    console.log('Get recurring payments for user:', req.user?.id);
+    const payments = await RecurringPaymentsDB.getAll(req.user!.id);
 
     const response: ApiResponse<any[]> = {
       data: payments,
@@ -33,7 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/check', async (req: Request, res: Response) => {
   try {
     console.log('Check recurring payments');
-    const hasPayments = await RecurringPaymentsDB.checkExists(MOCK_USER_ID);
+    const hasPayments = await RecurringPaymentsDB.checkExists(req.user!.id);
 
     const response: ApiResponse<any[]> = {
       data: hasPayments ? [{ id: 'dummy' }] : [], // Return dummy data to match frontend expectation
@@ -64,7 +65,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
 
-    const newPayment = await RecurringPaymentsDB.create(MOCK_USER_ID, {
+    const newPayment = await RecurringPaymentsDB.create(req.user!.id, {
       name,
       amount,
       currency,
@@ -106,7 +107,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
 
-    const updatedPayment = await RecurringPaymentsDB.update(id, MOCK_USER_ID, {
+    const updatedPayment = await RecurringPaymentsDB.update(id, req.user!.id, {
       name,
       amount,
       currency,
@@ -147,7 +148,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const deleted = await RecurringPaymentsDB.delete(id, MOCK_USER_ID);
+    const deleted = await RecurringPaymentsDB.delete(id, req.user!.id);
     if (!deleted) {
       const response: ApiResponse<null> = {
         data: null,
