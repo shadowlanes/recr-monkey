@@ -2,10 +2,14 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-RUN npm init -y && npm install express cors
+COPY package*.json tsconfig.json ./
 
-COPY . .
+RUN npm install
+
+COPY src ./src
+
+RUN npm run build
 
 EXPOSE 3001
 
-CMD ["node", "index.js"]
+CMD ["npm", "start"]
