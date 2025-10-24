@@ -1,76 +1,70 @@
 import { Router, Request, Response } from 'express';
-import { RecurringPayment, ApiResponse } from './types';
+import { RecurringPaymentsDB } from './db-operations';
+import { ApiResponse } from './types';
 
 const router = Router();
 
-// In-memory storage
-let recurringPayments: RecurringPayment[] = [];
-
-// Mock user ID
-const MOCK_USER_ID = 'user-123';
+// Mock user ID (using the existing user from database)
+const MOCK_USER_ID = '02f43aab-5e7b-4231-ac3f-c19189508235';
 
 // Get all recurring payments
-router.get('/', (req: Request, res: Response) => {
-  console.log('Get recurring payments');
-  
-  const response: ApiResponse<RecurringPayment[]> = {
-    data: recurringPayments,
-    error: null
-  };
-  
-  res.json(response);
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    console.log('Get recurring payments');
+    const payments = await RecurringPaymentsDB.getAll(MOCK_USER_ID);
+
+    const response: ApiResponse<any[]> = {
+      data: payments,
+      error: null
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting recurring payments:', error);
+    const response: ApiResponse<null> = {
+      data: null,
+      error: { message: 'Failed to get recurring payments' }
+    };
+    res.status(500).json(response);
+  }
 });
 
 // Check if user has recurring payments
-router.get('/check', (req: Request, res: Response) => {
-  console.log('Check recurring payments');
-  
-  const response: ApiResponse<RecurringPayment[]> = {
-    data: recurringPayments.slice(0, 1),
-    error: null
-  };
-  
-  res.json(response);
+router.get('/check', async (req: Request, res: Response) => {
+  try {
+    console.log('Check recurring payments');
+    const hasPayments = await RecurringPaymentsDB.checkExists(MOCK_USER_ID);
+
+    const response: ApiResponse<any[]> = {
+      data: hasPayments ? [{ id: 'dummy' }] : [], // Return dummy data to match frontend expectation
+      error: null
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error checking recurring payments:', error);
+    const response: ApiResponse<null> = {
+      data: null,
+      error: { message: 'Failed to check recurring payments' }
+    };
+    res.status(500).json(response);
+  }
 });
 
 // Create recurring payment
-router.post('/', (req: Request, res: Response) => {
-  const { name, amount, currency, frequency, payment_source_id, start_date, category } = req.body;
-  
-  const newPayment: RecurringPayment = {
-    id: `rp-${Date.now()}`,
-    user_id: MOCK_USER_ID,
-    name,
-    amount,
-    currency,
-    frequency,
-    payment_source_id,
-    start_date,
-    category,
-    created_at: new Date().toISOString()
-  };
-  
-  recurringPayments.push(newPayment);
-  console.log('Created recurring payment:', newPayment);
-  
-  const response: ApiResponse<RecurringPayment[]> = {
-    data: [newPayment],
-    error: null
-  };
-  
-  res.json(response);
-});
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const { name, amount, currency, frequency, payment_source_id, start_date, category } = req.body;
 
-// Update recurring payment
-router.put('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name, amount, currency, frequency, payment_source_id, start_date, category } = req.body;
-  
-  const index = recurringPayments.findIndex(p => p.id === id);
-  
-  if (index !== -1) {
-    recurringPayments[index] = {
-      ...recurringPayments[index],
+    if (!name || !amount || !currency || !frequency || !payment_source_id || !start_date || !category) {
+      const response: ApiResponse<null> = {
+        data: null,
+        error: { message: 'All fields are required' }
+      };
+      return res.status(400).json(response);
+    }
+
+    const newPayment = await RecurringPaymentsDB.create(MOCK_USER_ID, {
       name,
       amount,
       currency,
@@ -78,40 +72,106 @@ router.put('/:id', (req: Request, res: Response) => {
       payment_source_id,
       start_date,
       category
-    };
-    
-    console.log('Updated recurring payment:', recurringPayments[index]);
-    
-    const response: ApiResponse<RecurringPayment[]> = {
-      data: [recurringPayments[index]],
+    });
+
+    console.log('Created recurring payment:', newPayment);
+
+    const response: ApiResponse<any[]> = {
+      data: [newPayment],
       error: null
     };
-    
+
     res.json(response);
-  } else {
+  } catch (error) {
+    console.error('Error creating recurring payment:', error);
     const response: ApiResponse<null> = {
       data: null,
-      error: { message: 'Recurring payment not found' }
+      error: { message: 'Failed to create recurring payment' }
     };
-    
-    res.status(404).json(response);
+    res.status(500).json(response);
+  }
+});
+
+// Update recurring payment
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, amount, currency, frequency, payment_source_id, start_date, category } = req.body;
+
+    if (!name || !amount || !currency || !frequency || !payment_source_id || !start_date || !category) {
+      const response: ApiResponse<null> = {
+        data: null,
+        error: { message: 'All fields are required' }
+      };
+      return res.status(400).json(response);
+    }
+
+    const updatedPayment = await RecurringPaymentsDB.update(id, MOCK_USER_ID, {
+      name,
+      amount,
+      currency,
+      frequency,
+      payment_source_id,
+      start_date,
+      category
+    });
+
+    if (!updatedPayment) {
+      const response: ApiResponse<null> = {
+        data: null,
+        error: { message: 'Recurring payment not found' }
+      };
+      return res.status(404).json(response);
+    }
+
+    console.log('Updated recurring payment:', updatedPayment);
+
+    const response: ApiResponse<any[]> = {
+      data: [updatedPayment],
+      error: null
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating recurring payment:', error);
+    const response: ApiResponse<null> = {
+      data: null,
+      error: { message: 'Failed to update recurring payment' }
+    };
+    res.status(500).json(response);
   }
 });
 
 // Delete recurring payment
-router.delete('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  recurringPayments = recurringPayments.filter(p => p.id !== id);
-  console.log('Deleted recurring payment:', id);
-  
-  const response: ApiResponse<null> = {
-    data: null,
-    error: null
-  };
-  
-  res.json(response);
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await RecurringPaymentsDB.delete(id, MOCK_USER_ID);
+    if (!deleted) {
+      const response: ApiResponse<null> = {
+        data: null,
+        error: { message: 'Recurring payment not found' }
+      };
+      return res.status(404).json(response);
+    }
+
+    console.log('Deleted recurring payment:', id);
+
+    const response: ApiResponse<null> = {
+      data: null,
+      error: null
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error deleting recurring payment:', error);
+    const response: ApiResponse<null> = {
+      data: null,
+      error: { message: 'Failed to delete recurring payment' }
+    };
+    res.status(500).json(response);
+  }
 });
 
-export { recurringPayments };
 export default router;
