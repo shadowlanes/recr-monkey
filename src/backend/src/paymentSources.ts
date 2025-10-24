@@ -1,17 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { PaymentSource, ApiResponse } from './types';
 import { PaymentSourcesDB } from './db-operations';
+import { requireAuth } from './middleware';
 
 const router = Router();
 
-// Mock user ID (using the existing user from database)
-const MOCK_USER_ID = '02f43aab-5e7b-4231-ac3f-c19189508235';
+// Apply auth middleware to all routes
+router.use(requireAuth);
 
 // Get all payment sources
 router.get('/', async (req: Request, res: Response) => {
   try {
-    console.log('Get payment sources');
-    const paymentSources = await PaymentSourcesDB.getAll(MOCK_USER_ID);
+    console.log('Get payment sources for user:', req.user?.id);
+    const paymentSources = await PaymentSourcesDB.getAll(req.user!.id);
     
     const response: ApiResponse<PaymentSource[]> = {
       data: paymentSources,
@@ -34,7 +35,7 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const { name, type, identifier } = req.body;
     
-    const newSource = await PaymentSourcesDB.create(MOCK_USER_ID, {
+    const newSource = await PaymentSourcesDB.create(req.user!.id, {
       name,
       type,
       identifier
@@ -64,7 +65,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, type, identifier } = req.body;
     
-    const updatedSource = await PaymentSourcesDB.update(id, MOCK_USER_ID, {
+    const updatedSource = await PaymentSourcesDB.update(id, req.user!.id, {
       name,
       type,
       identifier
@@ -113,7 +114,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       return;
     }
     
-    const deleted = await PaymentSourcesDB.delete(id, MOCK_USER_ID);
+    const deleted = await PaymentSourcesDB.delete(id, req.user!.id);
     
     if (deleted) {
       console.log('Deleted payment source:', id);
