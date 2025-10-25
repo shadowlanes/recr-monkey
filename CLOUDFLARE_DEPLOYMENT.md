@@ -54,9 +54,10 @@ Set the following configuration:
 | **Project name** | `recr-monkey` (or your preferred name) |
 | **Production branch** | `main` |
 | **Framework preset** | Next.js |
-| **Build command** | `npm run build` |
-| **Build output directory** | `.next` |
+| **Build command** | `npm run build:cf` |
+| **Build output directory** | `.vercel/output/static` |
 | **Root directory** | `src/web` |
+| **Functions directory** | `.vercel/output/functions` |
 
 ### 4. Environment Variables
 
@@ -69,6 +70,11 @@ NEXT_PUBLIC_API_URL=https://api.recr.shadowlanes.com
 **Important:** 
 - The `NEXT_PUBLIC_` prefix is required for the variable to be accessible in the browser
 - This tells your frontend where to find the backend API
+ 
+Also enable Node.js compatibility in your Pages project (required by Next.js runtime):
+
+- Go to Project → Settings → Functions → Compatibility flags
+- Add: `nodejs_compat`
 
 ### 5. Deploy
 
@@ -208,8 +214,10 @@ fetch(url, {
 - **URL:** `https://recr.shadowlanes.com`
 - **Environment Variable:** `NEXT_PUBLIC_API_URL=https://api.recr.shadowlanes.com`
 - **Root Directory:** `src/web`
-- **Build Command:** `npm run build`
-- **Output Directory:** `.next`
+- **Build Command:** `npm run build:cf`
+- **Output Directory:** `.vercel/output/static`
+- **Functions Directory:** `.vercel/output/functions`
+- **Compatibility flag:** `nodejs_compat`
 
 ### Backend (Railway)
 - **URL:** `https://api.recr.shadowlanes.com`
