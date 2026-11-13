@@ -1,5 +1,17 @@
 # recr-monkey
-Track all your recurring payments and subscriptions
+Track all your recurring payments and subscriptions.
+
+One number for your monthly spend, a 30-day view of upcoming charges, and
+multi-currency support: each subscription keeps its billing currency
+(INR, USD, AED, …) while totals convert to a per-user display currency
+using daily exchange rates.
+
+## App Screens
+
+- **Overview** (`/dashboard`) — monthly-spend hero, upcoming 30-day agenda, category breakdown
+- **Subscriptions** (`/dashboard/subscriptions`) — sortable table with normalized monthly cost
+- **Settings** (`/dashboard/settings`) — payment sources (optional metadata) and display currency
+- A global quick-add dialog: only name, amount, and frequency are required
 
 ## Project Structure
 
@@ -95,6 +107,13 @@ NEXT_PUBLIC_URL=http://localhost:3000
 - `POST /api/recurring-payments` - Create recurring payment
 - `PUT /api/recurring-payments/:id` - Update recurring payment
 - `DELETE /api/recurring-payments/:id` - Delete recurring payment
+
+`payment_source_id` and `category` are optional (nullable).
+
+### Rates & Preferences
+- `GET /api/rates` - USD-based exchange rates (fetched from open.er-api.com, cached server-side for 24h)
+- `GET /api/preferences` - Current user's preferences (Protected)
+- `PUT /api/preferences` - Update preferences, e.g. `{ "display_currency": "INR" }` (Protected)
 
 ## Tech Stack
 

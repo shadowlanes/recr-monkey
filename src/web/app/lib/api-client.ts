@@ -239,19 +239,6 @@ export const api = {
     return result.data || [];
   },
 
-  async checkRecurringPayments(): Promise<boolean> {
-    const response = await fetch(`${API_URL}/api/recurring-payments/check`, {
-      credentials: 'include'
-    });
-    const result: ApiResponse<RecurringPayment[]> = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
-    
-    return (result.data || []).length > 0;
-  },
-
   async createRecurringPayment(payment: {
     name: string;
     amount: number;
