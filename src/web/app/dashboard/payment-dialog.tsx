@@ -155,8 +155,12 @@ export function PaymentDialogProvider({ children }: { children: React.ReactNode 
         } catch {}
         close();
       }
-    } catch {
-      setError('Saving failed. Check your connection and try again.');
+    } catch (err) {
+      setError(
+        err instanceof TypeError
+          ? 'Saving failed. Check your connection and try again.'
+          : `Saving failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
     } finally {
       setSaving(false);
     }

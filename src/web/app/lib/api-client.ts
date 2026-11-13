@@ -133,34 +133,28 @@ export const api = {
   },
 
   async getUser(): Promise<User | null> {
-    // First check local storage
-    const cachedUser = storage.getUser();
-    if (cachedUser) {
-      return cachedUser;
-    }
-    
-    // If no cached user, check session with server
+    // The server session is the source of truth. The cached user is only a
+    // fallback when the server is unreachable; a stale cache must never make
+    // the app look signed-in while the session cookie is gone or invalid.
     try {
       const response = await fetch(`${API_URL}/api/auth/get-session`, {
         method: 'GET',
         credentials: 'include'
       });
-      
-      if (!response.ok) {
-        return null;
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result?.user) {
+          storage.setUser(result.user);
+          return result.user;
+        }
       }
-      
-      const result = await response.json();
-      
-      if (result.user) {
-        storage.setUser(result.user);
-        return result.user;
-      }
+      storage.clear();
+      return null;
     } catch (error) {
       console.error('Error fetching user session:', error);
+      return storage.getUser();
     }
-    
-    return null;
   },
 
   // Get current stored user without API call
