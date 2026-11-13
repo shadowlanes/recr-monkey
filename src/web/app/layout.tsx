@@ -1,10 +1,24 @@
 import { AuthProvider } from './components/auth/auth-provider';
 import { DataProvider } from './contexts/data-context';
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Schibsted_Grotesk, Spline_Sans, Spline_Sans_Mono } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const schibsted = Schibsted_Grotesk({
+  subsets: ['latin'],
+  weight: ['500', '700', '800'],
+  variable: '--font-schibsted',
+});
+const splineSans = Spline_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-spline',
+});
+const splineMono = Spline_Sans_Mono({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-spline-mono',
+});
 
 export const metadata: Metadata = {
   title: 'Recr-Monkey | Track Your Recurring Payments',
@@ -18,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${schibsted.variable} ${splineSans.variable} ${splineMono.variable}`}>
         <AuthProvider>
           <DataProvider>
             <header className="bg-white shadow-md sticky top-0 z-50">
