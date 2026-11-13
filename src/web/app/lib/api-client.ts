@@ -3,6 +3,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Import types
 import { PaymentSource, RecurringPayment } from '../types';
+import { Rates } from './money';
+
+export interface UserPreferences {
+  user_id: string;
+  display_currency: string;
+  updated_at?: string;
+}
 
 // User type matching better-auth backend
 export interface User {
@@ -229,9 +236,9 @@ export const api = {
     amount: number;
     currency: string;
     frequency: string;
-    payment_source_id: string;
+    payment_source_id: string | null;
     start_date: string;
-    category: string;
+    category: string | null;
   }): Promise<RecurringPayment> {
     const response = await fetch(`${API_URL}/api/recurring-payments`, {
       method: 'POST',
@@ -254,9 +261,9 @@ export const api = {
     amount: number;
     currency: string;
     frequency: string;
-    payment_source_id: string;
+    payment_source_id: string | null;
     start_date: string;
-    category: string;
+    category: string | null;
   }): Promise<RecurringPayment> {
     const response = await fetch(`${API_URL}/api/recurring-payments/${id}`, {
       method: 'PUT',
@@ -279,12 +286,54 @@ export const api = {
       method: 'DELETE',
       credentials: 'include'
     });
-    
+
     const result: ApiResponse<null> = await response.json();
-    
+
     if (result.error) {
       throw new Error(result.error.message);
     }
+  },
+
+  // Exchange rates (USD-based, cached server-side)
+  async getRates(): Promise<Rates> {
+    const response = await fetch(`${API_URL}/api/rates`);
+    const result: ApiResponse<Rates> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to load exchange rates');
+    }
+
+    return result.data;
+  },
+
+  // User preferences
+  async getPreferences(): Promise<UserPreferences> {
+    const response = await fetch(`${API_URL}/api/preferences`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<UserPreferences> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to load preferences');
+    }
+
+    return result.data;
+  },
+
+  async updatePreferences(prefs: { display_currency: string }): Promise<UserPreferences> {
+    const response = await fetch(`${API_URL}/api/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(prefs)
+    });
+    const result: ApiResponse<UserPreferences> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to update preferences');
+    }
+
+    return result.data;
   }
 };
 
