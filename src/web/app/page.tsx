@@ -36,26 +36,13 @@ export default function Home() {
     );
   }
 
-  // If user is logged in, show dashboard tabs
+  // Logged-in users go straight to the dashboard
   if (user) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="app-tabs flex border-b border-gray-200 mb-4">
-          <Link href="/dashboard/payment-sources" className="app-tab-btn px-4 py-2 font-medium hover:text-indigo-600">
-            Payment Sources
-          </Link>
-          <Link href="/dashboard/recurring-payments" className="app-tab-btn px-4 py-2 font-medium hover:text-indigo-600">
-            Recurring Payments
-          </Link>
-          <Link href="/dashboard/calendar" className="app-tab-btn px-4 py-2 font-medium hover:text-indigo-600">
-            Calendar View
-          </Link>
-        </div>
-        
-        <div className="py-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Welcome to Recr-Monkey!</h2>
-          <p className="mb-4">Please select one of the tabs above to get started.</p>
-        </div>
+      <div className="container mx-auto px-4 py-16 text-center">
+        <Link href="/dashboard" className="text-lg font-semibold underline">
+          Go to your dashboard
+        </Link>
       </div>
     );
   }

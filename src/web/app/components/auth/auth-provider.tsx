@@ -4,8 +4,6 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { api, User } from '../../lib/api-client';
 import { useRouter } from 'next/navigation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 type AuthContextType = {
   user: User | null;
   loading: boolean;
@@ -23,26 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const userRef = useRef<User | null>(null);
-
-  // Check if user has recurring payments
-  const checkForRecurringPayments = async (_userId: string) => {
-    try {
-      const response = await fetch(`${API_URL}/api/recurring-payments/check`, {
-        credentials: 'include'
-      });
-      const result = await response.json();
-      
-      if (result.error) {
-        console.error('Error checking recurring payments:', result.error);
-        return false;
-      }
-      
-      return result.data && result.data.length > 0;
-    } catch (err) {
-      console.error('Error checking recurring payments:', err);
-      return false;
-    }
-  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -79,14 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user: loggedInUser } = await api.signIn(email, password);
       setUser(loggedInUser);
       userRef.current = loggedInUser;
-      
-      // Check for recurring payments and redirect
-      const hasRecurringPayments = await checkForRecurringPayments(loggedInUser.id);
-      if (hasRecurringPayments) {
-        router.push('/dashboard/calendar');
-      } else {
-        router.push('/dashboard/onboarding');
-      }
+      router.push('/dashboard');
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
@@ -103,9 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user: newUser } = await api.signUp(email, password, name);
       setUser(newUser);
       userRef.current = newUser;
-      
-      // New users go to onboarding
-      router.push('/dashboard/onboarding');
+      router.push('/dashboard');
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
