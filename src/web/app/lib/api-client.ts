@@ -34,6 +34,10 @@ interface AuthResponse {
   user: User;
 }
 
+// Local-dev hack: when set, email sign-in/up go through the backend's dev-login
+// (accepts any credentials). Backend must have DEV_AUTH_BYPASS=true.
+const DEV_AUTH = process.env.NEXT_PUBLIC_DEV_AUTH === 'true';
+
 // Storage keys
 const USER_KEY = 'auth_user';
 
@@ -62,7 +66,7 @@ const storage = {
 export const api = {
   // Auth endpoints (better-auth)
   async signUp(email: string, password: string, name?: string): Promise<{ user: User }> {
-    const response = await fetch(`${API_URL}/api/auth/sign-up/email`, {
+    const response = await fetch(`${API_URL}/api/auth/${DEV_AUTH ? 'dev-login' : 'sign-up/email'}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Important: Include cookies for session
@@ -80,7 +84,7 @@ export const api = {
   },
 
   async signIn(email: string, password: string): Promise<{ user: User }> {
-    const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
+    const response = await fetch(`${API_URL}/api/auth/${DEV_AUTH ? 'dev-login' : 'sign-in/email'}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Important: Include cookies for session

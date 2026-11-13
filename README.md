@@ -27,50 +27,41 @@ This project uses [better-auth](https://www.better-auth.com/) for authentication
 
 ### Database Schema Management
 
-Better-auth manages its own database tables (`user`, `session`, `account`, `verification`) automatically. Application-specific tables (`payment_sources`, `recurring_payments`) are managed through custom migrations.
-
-#### Running Better-Auth Migrations
-
-After starting the database, run the better-auth migration command to create/update authentication tables:
-
-```bash
-cd src/backend
-DB_HOST=localhost DB_PORT=5432 DB_NAME=recr_monkey_db DB_USER=user DB_PASSWORD=password \
-  npx @better-auth/cli@latest migrate --config src/auth-config.ts -y
-```
-
-**Note:** The `-y` flag auto-confirms the migration. Remove it if you want to review changes before applying.
-
-#### For Docker Setup
-
-If running in Docker, the backend container automatically runs custom migrations on startup. After the containers are up, run the better-auth migration from your host machine:
-
-```bash
-cd src/backend
-DB_HOST=localhost DB_PORT=5432 DB_NAME=recr_monkey_db DB_USER=user DB_PASSWORD=password \
-  npx @better-auth/cli@latest migrate --config src/auth-config.ts -y
-```
+Better-auth manages its own tables (`user`, `session`, `account`, `verification`).
+App tables (`payment_sources`, `recurring_payments`, `user_preferences`) come from
+the custom migrations. Both run automatically on backend start.
 
 ## Development Setup
 
+Requires a Postgres on `localhost:5432` (user `user`, password `password`) with an
+empty database `recr_monkey_db`:
+
+```bash
+createdb -h localhost -U user recr_monkey_db
+```
+
 ### Using Docker
 
-1. Start all services:
 ```bash
 cd src
-docker compose up -d
+docker compose up -d --build
 ```
 
-2. Run better-auth migrations:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+
+### Without Docker
+
 ```bash
-cd backend
-DB_HOST=localhost DB_PORT=5432 DB_NAME=recr_monkey_db DB_USER=user DB_PASSWORD=password \
-  npx @better-auth/cli@latest migrate --config src/auth-config.ts -y
+cd src/backend && npm install && npm run migrate && npm run dev   # :3001
+cd src/web && npm install && npm run dev                          # :3000
 ```
 
-3. Access the application:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
+### Local dev login
+
+With `DEV_AUTH_BYPASS=true` (backend) and `NEXT_PUBLIC_DEV_AUTH=true` (web), any
+email/password signs in (the user is auto-created). Ignored when
+`NODE_ENV=production`.
 
 ### Environment Variables
 
@@ -117,132 +108,17 @@ NEXT_PUBLIC_URL=http://localhost:3000
 
 ## Tech Stack
 
-- **Frontend:** Next.js 15, React, TypeScript, TailwindCSS
+- **Frontend:** Next.js 16, React, TypeScript, TailwindCSS
 - **Backend:** Node.js 24, Express, TypeScript
-- **Database:** PostgreSQL (latest)
+- **Database:** PostgreSQL
 - **Authentication:** better-auth
 - **Containerization:** Docker, Docker Compose
 
-## Railway Deployment
+## Migrations
 
-### Prerequisites
-
-1. Railway account with PostgreSQL addon
-2. Custom domains configured:
-   - Backend: `api.recr.shadowlanes.com`
-   - Frontend: `recr.shadowlanes.com`
-
-### Backend Deployment
-
-1. **Create a new Railway project** and add a PostgreSQL database
-
-2. **Configure environment variables** in Railway:
-   ```bash
-   # Database (automatically set by Railway PostgreSQL addon)
-   DB_HOST=<from Railway>
-   DB_PORT=<from Railway>
-   DB_NAME=<from Railway>
-   DB_USER=<from Railway>
-   DB_PASSWORD=<from Railway>
-   
-   # Better Auth
-   BETTER_AUTH_SECRET=<generate-a-random-32-char-string>
-   BETTER_AUTH_URL=https://api.recr.shadowlanes.com
-   
-   # Google OAuth (optional)
-   GOOGLE_CLIENT_ID=<your-google-client-id>
-   GOOGLE_CLIENT_SECRET=<your-google-client-secret>
-   GOOGLE_REDIRECT_URI=https://api.recr.shadowlanes.com/api/auth/callback/google
-   
-   # Frontend URL
-   FRONTEND_URL=https://recr.shadowlanes.com
-   ```
-
-3. **Deploy the backend:**
-   - Set root directory to `src/backend`
-   - Build command: `npm install && npm run build`
-   - Start command: `npm start` (migrations run automatically via `prestart` script)
-   - Port: Railway will set `PORT` automatically
-
-4. **Configure custom domain:**
-   - Add `api.recr.shadowlanes.com` as custom domain in Railway settings
-
-### Migration Strategy
-
-The backend is configured to automatically run migrations before starting:
-- `startDocker` script in `package.json` runs both application and better-auth migrations
-- Ensures database schema is always up-to-date on each deployment
-- Zero-downtime deployments with automatic schema updates
-
-### Frontend Deployment (Cloudflare Pages)
-
-#### Prerequisites
-1. Cloudflare account
-2. Domain configured: `recr.shadowlanes.com`
-3. Backend already deployed to Railway at `api.recr.shadowlanes.com`
-
-#### Deployment Steps
-
-1. **Push your code to GitHub** (if not already):
-   ```bash
-   git push origin main
-   ```
-
-2. **Connect to Cloudflare Pages:**
-   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-   - Navigate to **Workers & Pages** → **Create application** → **Pages**
-   - Connect your GitHub repository
-   - Select the `recr-monkey` repository
-
-3. **Configure build settings:**
-   - **Project name:** `recr-monkey`
-   - **Production branch:** `main`
-   - **Framework preset:** Next.js
-   - **Build command:** `npm run build`
-   - **Build output directory:** `.next`
-   - **Root directory:** `src/web`
-
-4. **Set environment variables:**
-   Click on **Environment variables** and add:
-   ```
-   NEXT_PUBLIC_API_URL=https://api.recr.shadowlanes.com
-   ```
-
-5. **Configure custom domain:**
-   - After deployment, go to **Custom domains**
-   - Add `recr.shadowlanes.com`
-   - Update your DNS records as instructed by Cloudflare
-
-6. **Deploy:**
-   - Click **Save and Deploy**
-   - Cloudflare will build and deploy your application
-
-#### Important Notes for Cloudflare Pages
-
-- **Static Export:** Cloudflare Pages works best with Next.js static exports or with their Next.js runtime
-- **Environment Variables:** All API URLs must use `NEXT_PUBLIC_` prefix to be accessible in the browser
-- **CORS:** Ensure your backend at `api.recr.shadowlanes.com` allows requests from `recr.shadowlanes.com`
-- **Automatic Deployments:** Every push to `main` branch will trigger a new deployment
-
-#### Alternative: Using Wrangler CLI
-
-You can also deploy using Cloudflare's CLI:
-
-```bash
-cd src/web
-
-# Install Wrangler
-npm install -g wrangler
-
-# Login to Cloudflare
-wrangler login
-
-# Deploy
-npx @cloudflare/next-on-pages@1
-
-# Or use their Pages integration
-wrangler pages deploy .next --project-name=recr-monkey
-```
+The backend runs app migrations (`src/backend/migrations/`) and the better-auth
+migration automatically on container start (`npm run startDocker`). Never edit an
+applied migration; add a new numbered file.
 
 ### CORS Configuration
 

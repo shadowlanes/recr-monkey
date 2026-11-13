@@ -9,9 +9,7 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "build:cf": "next-on-pages",
-    "preview:cf": "wrangler pages dev .vercel/output/static --compatibility-flags=nodejs_compat --local true"
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "next": "^16.0.0",
@@ -19,7 +17,6 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^30.0.0",
@@ -31,7 +28,6 @@
     "jest": "^30.5.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.15",
-    "typescript": "^5",
-    "wrangler": "^3.81.0"
+    "typescript": "^5"
   }
 }

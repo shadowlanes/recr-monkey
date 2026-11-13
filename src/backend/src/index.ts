@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import authRouter from './auth';
+import devAuthRouter, { devAuthEnabled } from './dev-auth';
 import paymentSourcesRouter from './paymentSources';
 import recurringPaymentsRouter from './recurringPayments';
 import ratesRouter from './rates';
@@ -52,6 +53,10 @@ app.get('/ping', (req, res) => {
 });
 
 // Routes
+if (devAuthEnabled) {
+  console.warn('⚠️  DEV_AUTH_BYPASS is ON: POST /api/auth/dev-login accepts any credentials');
+  app.use('/api/auth', devAuthRouter); // must precede the better-auth catch-all
+}
 app.use('/api/auth', authRouter);
 app.use('/api/recurring-payments', recurringPaymentsRouter);
 app.use('/api/payment-sources', paymentSourcesRouter);

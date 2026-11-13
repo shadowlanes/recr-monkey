@@ -2,8 +2,8 @@
 
 Personal subscription tracker: one number for monthly spend, a 30-day agenda of
 upcoming charges, multi-currency support. Single-user-focused side project by
-shadowlanes, deployed at recr.shadowlanes.com (frontend, Cloudflare Pages) and
-api.recr.shadowlanes.com (backend, Railway).
+shadowlanes, deployed at recr.shadowlanes.com (frontend) and
+api.recr.shadowlanes.com (backend).
 
 The UI and most of the frontend were rebuilt from scratch on the `rewrite_v3`
 branch (Nov 2026). Design reference: the "Recr Monkey Redesign" mockup artifact.
@@ -89,15 +89,16 @@ npm run dev          # if defined; otherwise npx ts-node src/index.ts on :3001
 npx tsc --noEmit     # typecheck
 
 # Full stack
-cd src && docker compose up -d   # postgres + backend + web
-# better-auth tables (first setup): see README "Running Better-Auth Migrations"
+cd src && docker compose up -d   # backend + web; uses the host Postgres (host.docker.internal:5432, db recr_monkey_db)
+# better-auth + app migrations run automatically on backend start
 ```
 
 ## Gotchas
 
-- `npm install` in src/web needs `--legacy-peer-deps`:
-  `@cloudflare/next-on-pages@1.x` pins `next <= 15.5.2` but the app is on
-  Next 16. Deploy tooling may need revisiting (OpenNext adapter).
+- Local dev login hack: backend `DEV_AUTH_BYPASS=true` (+ web `NEXT_PUBLIC_DEV_AUTH=true`) makes
+  any email/password sign in via `POST /api/auth/dev-login` (auto-creates the user). Ignored when
+  `NODE_ENV=production`; never set in deployed envs. Backend `npm run dev` loads `.env`.
+
 - Local port 5432 may already be taken by a native Postgres; stop it or remap
   the compose port before `docker compose up`.
 - A transient Turbopack error ("next/font/google queries have exactly one
