@@ -76,6 +76,13 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes dialog-pop {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Legacy component classes — used by the pre-rewrite dashboard pages. */
 /* Removed in the cleanup phase once the old pages are deleted.        */
