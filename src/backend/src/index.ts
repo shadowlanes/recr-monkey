@@ -3,6 +3,8 @@ import cors from 'cors';
 import authRouter from './auth';
 import paymentSourcesRouter from './paymentSources';
 import recurringPaymentsRouter from './recurringPayments';
+import ratesRouter from './rates';
+import preferencesRouter from './preferences';
 import { runMigrations } from './database';
 
 const app = express();
@@ -53,6 +55,8 @@ app.get('/ping', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/recurring-payments', recurringPaymentsRouter);
 app.use('/api/payment-sources', paymentSourcesRouter);
+app.use('/api/rates', ratesRouter);
+app.use('/api/preferences', preferencesRouter);
 
 // Health check
 app.get('/', (req, res) => {

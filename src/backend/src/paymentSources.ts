@@ -102,18 +102,9 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    // Check if payment source is used by any recurring payments
-    const isUsed = await PaymentSourcesDB.isUsedByPayments(id);
-    if (isUsed) {
-      const response: ApiResponse<null> = {
-        data: null,
-        error: { message: 'Cannot delete payment source that is in use by recurring payments' }
-      };
-      res.status(400).json(response);
-      return;
-    }
-    
+
+    // Recurring payments keep working when their source is deleted:
+    // the FK is ON DELETE SET NULL, so they are detached, not removed.
     const deleted = await PaymentSourcesDB.delete(id, req.user!.id);
     
     if (deleted) {

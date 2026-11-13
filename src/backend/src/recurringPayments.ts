@@ -57,10 +57,10 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const { name, amount, currency, frequency, payment_source_id, start_date, category } = req.body;
 
-    if (!name || !amount || !currency || !frequency || !payment_source_id || !start_date || !category) {
+    if (!name || !amount || !currency || !frequency || !start_date) {
       const response: ApiResponse<null> = {
         data: null,
-        error: { message: 'All fields are required' }
+        error: { message: 'name, amount, currency, frequency and start_date are required' }
       };
       return res.status(400).json(response);
     }
@@ -70,9 +70,9 @@ router.post('/', async (req: Request, res: Response) => {
       amount,
       currency,
       frequency,
-      payment_source_id,
+      payment_source_id: payment_source_id || null,
       start_date,
-      category
+      category: category || null
     });
 
     console.log('Created recurring payment:', newPayment);
@@ -99,10 +99,10 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, amount, currency, frequency, payment_source_id, start_date, category } = req.body;
 
-    if (!name || !amount || !currency || !frequency || !payment_source_id || !start_date || !category) {
+    if (!name || !amount || !currency || !frequency || !start_date) {
       const response: ApiResponse<null> = {
         data: null,
-        error: { message: 'All fields are required' }
+        error: { message: 'name, amount, currency, frequency and start_date are required' }
       };
       return res.status(400).json(response);
     }
@@ -112,9 +112,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       amount,
       currency,
       frequency,
-      payment_source_id,
+      payment_source_id: payment_source_id || null,
       start_date,
-      category
+      category: category || null
     });
 
     if (!updatedPayment) {

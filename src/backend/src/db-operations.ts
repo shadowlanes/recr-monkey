@@ -1,5 +1,5 @@
 import { pool } from './database';
-import { PaymentSource, RecurringPayment } from './types';
+import { PaymentSource, RecurringPayment, UserPreferences } from './types';
 
 // Payment Sources Database Operations
 export class PaymentSourcesDB {
@@ -117,5 +117,26 @@ export class RecurringPaymentsDB {
     const query = 'DELETE FROM recurring_payments WHERE id = $1 AND user_id = $2';
     const { rowCount } = await pool.query(query, [id, userId]);
     return (rowCount || 0) > 0;
+  }
+}
+
+// User Preferences Database Operations
+export class PreferencesDB {
+  static async get(userId: string): Promise<UserPreferences> {
+    const query = 'SELECT user_id, display_currency, updated_at FROM user_preferences WHERE user_id = $1';
+    const { rows } = await pool.query(query, [userId]);
+    return rows[0] || { user_id: userId, display_currency: 'USD' };
+  }
+
+  static async upsert(userId: string, data: Pick<UserPreferences, 'display_currency'>): Promise<UserPreferences> {
+    const query = `
+      INSERT INTO user_preferences (user_id, display_currency, updated_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id)
+      DO UPDATE SET display_currency = $2, updated_at = NOW()
+      RETURNING user_id, display_currency, updated_at
+    `;
+    const { rows } = await pool.query(query, [userId, data.display_currency]);
+    return rows[0];
   }
 }
