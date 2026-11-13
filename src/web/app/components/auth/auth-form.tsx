@@ -2,8 +2,32 @@
 
 import React, { useState } from 'react';
 import { useAuth } from './auth-provider';
+import Button from '../ui/button';
+import { Field, Input } from '../ui/field';
 import LoadingAnimation from '../loading-animation';
-import { EnvelopeIcon, LockClosedIcon, UserIcon } from '@heroicons/react/24/outline';
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path
+        fill="#FFC107"
+        d="M43.6 20.1H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"
+      />
+      <path
+        fill="#FF3D00"
+        d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C40.9 35.4 44 30.2 44 24c0-1.3-.1-2.6-.4-3.9z"
+      />
+    </svg>
+  );
+}
 
 export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,21 +36,20 @@ export default function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  
-  const { signInWithEmail, signUpWithEmail, error: authError } = useAuth();
+  const [formError, setFormError] = useState('');
+
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, error: authError } = useAuth();
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setEmailError('');
-    
+    setFormError('');
+
     if (isSignUp && password !== confirmPassword) {
-      setEmailError('Passwords do not match');
+      setFormError('Passwords do not match');
       return;
     }
-    
     if (password.length < 6) {
-      setEmailError('Password must be at least 6 characters long');
+      setFormError('Password must be at least 6 characters long');
       return;
     }
 
@@ -37,139 +60,125 @@ export default function AuthForm() {
       } else {
         await signInWithEmail(email, password);
       }
-    } catch (error) {
-      console.error('Email auth error:', error);
+    } catch {
+      // error surfaces via authError
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogle = async () => {
+    setFormError('');
+    try {
+      await signInWithGoogle();
+    } catch {
+      // error surfaces via authError
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-md shadow-md">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {isSignUp ? 'Create Account' : 'Welcome Back'}
-        </h2>
-        <p className="text-gray-600">{isSignUp ? 'Sign up' : 'Log in'} with your email</p>
+    <div className="bg-surface border border-line rounded-2xl p-7 shadow-sm">
+      <h2 className="font-display font-extrabold text-xl tracking-tight mb-1">
+        {isSignUp ? 'Create your account' : 'Welcome back'}
+      </h2>
+      <p className="text-muted text-sm mb-5">
+        {isSignUp ? 'Free, takes a minute.' : 'Sign in to your subscriptions.'}
+      </p>
+
+      {(authError || formError) && (
+        <p className="mb-4 px-3 py-2 rounded-lg bg-danger-soft text-danger text-sm font-medium">
+          {formError || authError}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={handleGoogle}
+        className="w-full flex items-center justify-center gap-2.5 rounded-full border-[1.5px] border-line bg-bg px-4 py-2.5 text-sm font-semibold text-ink cursor-pointer hover:border-accent transition-colors mb-5"
+      >
+        <GoogleIcon />
+        Continue with Google
+      </button>
+
+      <div className="flex items-center gap-3 mb-5 text-xs text-muted">
+        <span className="h-px flex-1 bg-line" />
+        or with email
+        <span className="h-px flex-1 bg-line" />
       </div>
-        
-        {/* Error Messages */}
-        {(authError || emailError) && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-            {emailError || authError}
-          </div>
+
+      <form onSubmit={handleEmailAuth}>
+        {isSignUp && (
+          <Field label="Name" htmlFor="auth-name">
+            <Input
+              id="auth-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Optional"
+              autoComplete="name"
+            />
+          </Field>
         )}
-        
-        <form onSubmit={handleEmailAuth} className="space-y-4">
-          {isSignUp && (
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Enter your name (optional)"
-                />
-              </div>
-            </div>
+
+        <Field label="Email" htmlFor="auth-email">
+          <Input
+            id="auth-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+          />
+        </Field>
+
+        <Field label="Password" htmlFor="auth-password">
+          <Input
+            id="auth-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={6}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            required
+          />
+        </Field>
+
+        {isSignUp && (
+          <Field label="Confirm password" htmlFor="auth-confirm">
+            <Input
+              id="auth-confirm"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              minLength={6}
+              autoComplete="new-password"
+              required
+            />
+          </Field>
+        )}
+
+        <Button type="submit" disabled={isLoading} className="w-full mt-1">
+          {isLoading ? (
+            <LoadingAnimation size="small" />
+          ) : isSignUp ? (
+            'Create account'
+          ) : (
+            'Sign in'
           )}
-          
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter your email"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <LockClosedIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter your password"
-              />
-            </div>
-          </div>
-          
-          {isSignUp && (
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Confirm your password"
-                />
-              </div>
-            </div>
-          )}
-          
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <LoadingAnimation size="small" />
-            ) : (
-              isSignUp ? 'Create Account' : 'Sign In'
-            )}
-          </button>
-        </form>
-        
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setEmailError('');
-            }}
-            className="text-sm text-indigo-600 hover:text-indigo-500"
-          >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
-        </div>
+        </Button>
+      </form>
+
+      <button
+        type="button"
+        onClick={() => {
+          setIsSignUp(!isSignUp);
+          setFormError('');
+        }}
+        className="block mx-auto mt-4 text-sm font-semibold text-accent hover:text-accent-deep cursor-pointer"
+      >
+        {isSignUp ? 'Already have an account? Sign in' : 'New here? Create an account'}
+      </button>
     </div>
   );
 }

@@ -10,6 +10,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   error: string | null;
 };
 
@@ -85,14 +86,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    setError(null);
+    try {
+      const callbackURL = `${window.location.origin}/dashboard`;
+      const url = await api.signInWithGoogle(callbackURL);
+      window.location.href = url;
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Google sign-in failed');
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      signOut, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      signOut,
       signInWithEmail,
       signUpWithEmail,
-      error 
+      signInWithGoogle,
+      error
     }}>
       {children}
     </AuthContext.Provider>

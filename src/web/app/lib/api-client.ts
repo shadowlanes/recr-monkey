@@ -97,6 +97,27 @@ export const api = {
     return { user: result.user };
   },
 
+  // Social sign-in (better-auth): returns a provider URL to redirect to
+  async signInWithGoogle(callbackURL: string): Promise<string> {
+    const response = await fetch(`${API_URL}/api/auth/sign-in/social`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ provider: 'google', callbackURL })
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Google sign-in is not available');
+    }
+
+    const result: { url?: string; redirect?: boolean } = await response.json();
+    if (!result.url) {
+      throw new Error('Google sign-in is not available');
+    }
+    return result.url;
+  },
+
   async signOut(): Promise<void> {
     await fetch(`${API_URL}/api/auth/sign-out`, {
       method: 'POST',
