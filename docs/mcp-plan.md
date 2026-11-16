@@ -911,3 +911,44 @@ Other: `src/docker-compose.yml` (TZ), `src/docker-compose.public.yml` (new),
 - Stop and ask the user before: changing the dev-login password scheme
   (3.6), anything involving Cloudflare, DNS, or real Google OAuth
   credentials.
+
+---
+
+## Implementation notes (what differs from the plan above)
+
+All three phases are implemented on `feature/mcp`. Deviations and things
+learned while building:
+
+- **better-auth is mounted before `express.json()`** (not after, as it was).
+  better-auth reads the raw body; with the JSON parser first, the
+  form-encoded OAuth token request arrived empty. `dev-login` parses its own
+  JSON for the same reason.
+- **CORS is split by path** rather than layered: `/mcp`, discovery, and the
+  OAuth token/register/userinfo endpoints take the open, cookie-less policy;
+  everything else takes the credentialed allowlist. Layering the open policy
+  in front did not work because the allowlist still rejected foreign origins.
+- **`03_api_keys.sql` adds its foreign key conditionally**, like the earlier
+  migrations, so a fresh database works whichever migration runs first. The
+  `migrate` script order was still swapped (better-auth first).
+- **REST `PUT` stays a full replace** (`replaceSubscription`); the partial
+  `updateSubscription` is used by the MCP tool only.
+- **`GET /api/oauth/client` also takes `redirect_uri`** and reports whether
+  it is registered, so the consent page's Cancel can never redirect to an
+  unregistered URL.
+- **better-auth is pinned to exactly `1.3.29`.** Installing another package
+  bumped the `^1.3.29` range to 1.4.x mid-implementation.
+- **After a token refresh the previous access token keeps working until it
+  expires** (one hour); the plugin adds a row rather than replacing it.
+  "Disconnect" removes every row for the client.
+- **Not done: the dev-login password change in 3.6.** It invalidates existing
+  local dev accounts, so it is left for an explicit decision. The README
+  warns not to expose an instance holding dev-login accounts.
+- **Not done: anything needing the Cloudflare tunnel.** The compose override
+  is written and its merge was checked with `docker compose config`, but
+  public mode and real claude.ai / ChatGPT connectors have not been run.
+
+Verified locally: unit tests (backend 45, web 25), typecheck and production
+build of both apps, the Docker stack, the full OAuth flow by curl (register,
+gate, consent, code exchange, PKCE failure, code replay, refresh, expiry,
+disconnect, cross-user and cross-client consent reuse), and the consent and
+settings screens in headless Chrome.

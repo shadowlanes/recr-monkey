@@ -18,6 +18,16 @@ function bearerToken(headers: IncomingHttpHeaders): string | null {
   return match ? match[1].trim() : '';
 }
 
+async function resolveOAuthToken(token: string): Promise<Principal | null> {
+  const record = await auth.api.getMcpSession({
+    headers: new Headers({ authorization: `Bearer ${token}` }),
+  });
+  if (!record?.userId) return null;
+  // The plugin returns the stored row without checking expiry.
+  if (new Date(record.accessTokenExpiresAt).getTime() <= Date.now()) return null;
+  return { userId: record.userId, via: 'oauth', canWrite: true };
+}
+
 export async function resolvePrincipal(headers: IncomingHttpHeaders): Promise<Principal | null> {
   const token = bearerToken(headers);
 
@@ -29,7 +39,7 @@ export async function resolvePrincipal(headers: IncomingHttpHeaders): Promise<Pr
       const key = await verifyKey(token);
       return key ? { userId: key.userId, via: 'api_key', canWrite: key.scope === 'write' } : null;
     }
-    return null;
+    return resolveOAuthToken(token);
   }
 
   const session = await auth.api.getSession({ headers: fromNodeHeaders(headers) });

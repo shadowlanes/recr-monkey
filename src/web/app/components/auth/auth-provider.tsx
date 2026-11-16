@@ -8,9 +8,16 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  // stayOnPage: keep the current page (and its query) after signing in,
+  // instead of going to the dashboard. Used by the OAuth consent page.
+  signInWithEmail: (email: string, password: string, stayOnPage?: boolean) => Promise<void>;
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    name?: string,
+    stayOnPage?: boolean,
+  ) => Promise<void>;
+  signInWithGoogle: (stayOnPage?: boolean) => Promise<void>;
   error: string | null;
 };
 
@@ -52,13 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmail = async (email: string, password: string, stayOnPage = false) => {
     setError(null);
     try {
       const { user: loggedInUser } = await api.signIn(email, password);
       setUser(loggedInUser);
       userRef.current = loggedInUser;
-      router.push('/dashboard');
+      if (!stayOnPage) router.push('/dashboard');
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
@@ -69,13 +76,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string, name?: string) => {
+  const signUpWithEmail = async (
+    email: string,
+    password: string,
+    name?: string,
+    stayOnPage = false,
+  ) => {
     setError(null);
     try {
       const { user: newUser } = await api.signUp(email, password, name);
       setUser(newUser);
       userRef.current = newUser;
-      router.push('/dashboard');
+      if (!stayOnPage) router.push('/dashboard');
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
@@ -86,10 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (stayOnPage = false) => {
     setError(null);
     try {
-      const callbackURL = `${window.location.origin}/dashboard`;
+      const callbackURL = stayOnPage
+        ? window.location.href
+        : `${window.location.origin}/dashboard`;
       const url = await api.signInWithGoogle(callbackURL);
       window.location.href = url;
     } catch (error: unknown) {

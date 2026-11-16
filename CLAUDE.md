@@ -19,6 +19,9 @@ Two apps in one repo, deployed separately:
   migrations from `src/backend/migrations/` on startup (tracked in a
   `migrations` table; files run in filename order, never edit an applied one —
   add a new numbered file).
+- AI access: an MCP server at `POST /mcp` (stateless Streamable HTTP,
+  `src/backend/src/mcp/`) and bearer auth on the REST API. See
+  `docs/mcp-plan.md` for the design and the reasons behind it.
 - Auth is **better-auth** (email/password + Google OAuth). It owns the `user`,
   `session`, `account`, `verification` tables via its own CLI migration (see
   README). App tables reference `user(id)`.
@@ -39,6 +42,26 @@ Totals/normalized values convert at render time to the user's display currency
 via USD-based rates from `GET /api/rates` (backend fetches open.er-api.com,
 24h in-memory cache, stale-cache fallback). Never store converted amounts.
 
+## Backend map (src/backend/src/)
+
+- `services/` — the only place business logic lives: `subscriptions.ts`
+  (CRUD, zod validation, upcoming charges, spend summary),
+  `paymentSources.ts`, `apiKeys.ts`. Every function takes `userId` first.
+  REST routes and MCP tools are thin wrappers over these; add behaviour here,
+  not in a route.
+- `principal.ts` — `resolvePrincipal(headers)`: the single place a caller is
+  identified. Bearer `recr_…` API key, OAuth access token, or session cookie
+  → `{ userId, via, canWrite }`. A failed bearer never falls back to cookies.
+- `middleware.ts` — `requireAuth` (any credential; read-only keys get 403 on
+  writes) and `requireSession` (browser session only; used for managing keys,
+  OAuth consent and connections).
+- `mcp/server.ts` — tool definitions (write tools registered only when
+  `canWrite`); `mcp/route.ts` — transport, bearer-only (cookies refused).
+- `oauthConsent.ts` — consent gate in front of better-auth's
+  `/api/auth/mcp/authorize`, plus consent/connection routes.
+- `lib/money.ts`, `lib/upcoming.ts` — **duplicated** from `src/web/app/lib`.
+  Change both copies together; both are unit-tested.
+
 ## Frontend map (src/web/app/)
 
 - `layout.tsx` — root: fonts (Schibsted Grotesk = display, Spline Sans = body,
@@ -50,6 +73,9 @@ via USD-based rates from `GET /api/rates` (backend fetches open.er-api.com,
 - `dashboard/page.tsx` — Overview: spend hero, 30-day agenda, category bar.
 - `dashboard/subscriptions/page.tsx` — sortable table, rows open edit dialog.
 - `dashboard/settings/page.tsx` — payment sources CRUD + display currency.
+- `dashboard/settings/ai-access.tsx` — API keys and connected assistants.
+- `authorize/page.tsx` — public OAuth consent screen (sign-in if needed, then
+  Allow/Cancel). Must not redirect signed-in users away.
 - `dashboard/payment-dialog.tsx` — global quick-add/edit dialog (context:
   `usePaymentDialog().openAdd/openEdit`), inline source creation, 2-step delete.
 - `contexts/data-context.tsx` — payments + sources CRUD state over the API.
@@ -85,8 +111,9 @@ npm run build        # production build (verify before committing)
 npx jest             # unit tests (lib/money, lib/upcoming)
 
 # Backend (src/backend)
-npm run dev          # if defined; otherwise npx ts-node src/index.ts on :3001
+npm run dev          # loads .env, runs on :3001
 npx tsc --noEmit     # typecheck
+npm test             # node:test unit tests (lib, services, consent token)
 
 # Full stack
 cd src && docker compose up -d   # backend + web; uses the host Postgres (host.docker.internal:5432, db recr_monkey_db)
@@ -95,12 +122,27 @@ cd src && docker compose up -d   # backend + web; uses the host Postgres (host.d
 
 ## Gotchas
 
+- **Do not upgrade better-auth** (pinned to exactly 1.3.29) or the MCP SDK
+  (1.32.2) casually. Newer better-auth is ESM-only and moved the MCP plugin;
+  the backend is CommonJS. `npm install <anything>` can bump a caret range,
+  so check `node_modules/better-auth/package.json` after installing.
+- **The OAuth consent gate is security-critical.** The pinned better-auth MCP
+  plugin issues a code to any self-registered client as soon as a signed-in
+  user reaches `/api/auth/mcp/authorize`, with no consent screen.
+  `consentGate` (mounted before better-auth in `index.ts`) only lets a request
+  through with a short-lived HMAC token bound to user, client and redirect
+  URI, minted when the user clicks Allow. The plugin also does not check
+  access-token expiry; `principal.ts` does.
+- better-auth must stay mounted **before** `express.json()`: it reads the raw
+  body, and the OAuth token endpoint is form-encoded.
+- Public mode (`docker-compose.public.yml`): dev login off, sign-up closed,
+  real `BETTER_AUTH_SECRET`. Dev-login accounts have a password that is in
+  the source, so never expose an instance holding them.
+
 - Local dev login hack: backend `DEV_AUTH_BYPASS=true` (+ web `NEXT_PUBLIC_DEV_AUTH=true`) makes
   any email/password sign in via `POST /api/auth/dev-login` (auto-creates the user). Ignored when
   `NODE_ENV=production`; never set in deployed envs. Backend `npm run dev` loads `.env`.
 
-- Local port 5432 may already be taken by a native Postgres; stop it or remap
-  the compose port before `docker compose up`.
 - A transient Turbopack error ("next/font/google queries have exactly one
   entry") can appear on stale caches — `rm -rf .next` and rebuild.
 - Git: user prefers commits **without** Claude co-author attribution.

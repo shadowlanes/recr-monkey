@@ -22,6 +22,20 @@ export interface ApiKey {
   created_at: string;
 }
 
+// An OAuth client (an AI assistant) asking for, or holding, account access.
+export interface OAuthClientInfo {
+  client_id: string;
+  name: string;
+  redirect_host: string;
+  redirect_uri_valid: boolean;
+}
+
+export interface OAuthConnection {
+  client_id: string;
+  name: string;
+  connected_at: string;
+}
+
 // User type matching better-auth backend
 export interface User {
   id: string;
@@ -388,6 +402,63 @@ export const api = {
       method: 'DELETE',
       credentials: 'include'
     });
+    const result: ApiResponse<null> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  },
+
+  // OAuth consent and connected assistants (session-only on the backend)
+  async getOAuthClient(clientId: string, redirectUri: string): Promise<OAuthClientInfo> {
+    const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri });
+    const response = await fetch(`${API_URL}/api/oauth/client?${params}`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<OAuthClientInfo> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to load application');
+    }
+
+    return result.data;
+  },
+
+  // Returns a short-lived token that lets one authorize request through.
+  async grantOAuthConsent(clientId: string, redirectUri: string): Promise<string> {
+    const response = await fetch(`${API_URL}/api/oauth/consent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ client_id: clientId, redirect_uri: redirectUri })
+    });
+    const result: ApiResponse<{ consent: string }> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to record consent');
+    }
+
+    return result.data.consent;
+  },
+
+  async listOAuthConnections(): Promise<OAuthConnection[]> {
+    const response = await fetch(`${API_URL}/api/oauth/connections`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<OAuthConnection[]> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    return result.data || [];
+  },
+
+  async revokeOAuthConnection(clientId: string): Promise<void> {
+    const response = await fetch(
+      `${API_URL}/api/oauth/connections/${encodeURIComponent(clientId)}`,
+      { method: 'DELETE', credentials: 'include' }
+    );
     const result: ApiResponse<null> = await response.json();
 
     if (result.error) {

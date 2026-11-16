@@ -29,7 +29,12 @@ function GoogleIcon() {
   );
 }
 
-export default function AuthForm() {
+interface AuthFormProps {
+  /** Stay on the current page after signing in instead of opening the dashboard */
+  stayOnPage?: boolean;
+}
+
+export default function AuthForm({ stayOnPage = false }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
@@ -56,9 +61,9 @@ export default function AuthForm() {
     setIsLoading(true);
     try {
       if (isSignUp) {
-        await signUpWithEmail(email, password, name || undefined);
+        await signUpWithEmail(email, password, name || undefined, stayOnPage);
       } else {
-        await signInWithEmail(email, password);
+        await signInWithEmail(email, password, stayOnPage);
       }
     } catch {
       // error surfaces via authError
@@ -70,7 +75,7 @@ export default function AuthForm() {
   const handleGoogle = async () => {
     setFormError('');
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(stayOnPage);
     } catch {
       // error surfaces via authError
     }

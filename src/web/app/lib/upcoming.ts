@@ -47,7 +47,7 @@ export function nextChargeDate(payment: RecurringLike, from: Date = new Date()):
       return next;
     }
     case 'monthly': {
-      let months =
+      const months =
         (fromDay.getFullYear() - start.getFullYear()) * 12 +
         (fromDay.getMonth() - start.getMonth());
       let next = addMonthsClamped(start, months);

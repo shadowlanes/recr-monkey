@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { auth } from './auth-config';
 
 // LOCAL DEV ONLY. Any email/password "signs in": the user is auto-created on
@@ -12,7 +12,8 @@ const DEV_PASSWORD = 'dev-bypass-password-not-secret';
 
 const router = Router();
 
-router.post('/dev-login', async (req, res) => {
+// Parses its own body: this router is mounted ahead of the global JSON parser.
+router.post('/dev-login', express.json(), async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const name = String(req.body?.name || '').trim() || email.split('@')[0] || 'Dev User';
   if (!email) {

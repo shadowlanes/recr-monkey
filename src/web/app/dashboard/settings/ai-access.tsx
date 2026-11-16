@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { api, API_URL, ApiKey } from '../../lib/api-client';
+import { api, API_URL, ApiKey, OAuthConnection } from '../../lib/api-client';
 import Dialog from '../../components/ui/dialog';
 import Button from '../../components/ui/button';
 import ChipGroup from '../../components/ui/chip-group';
@@ -50,7 +50,9 @@ function CodeLine({ text, copyLabel }: { text: string; copyLabel?: string }) {
 
 export default function AiAccess() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [connections, setConnections] = useState<OAuthConnection[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Id of the key or connection awaiting a second click
   const [confirmingRevoke, setConfirmingRevoke] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -63,10 +65,15 @@ export default function AiAccess() {
 
   const load = useCallback(async () => {
     try {
-      setKeys(await api.listApiKeys());
+      const [nextKeys, nextConnections] = await Promise.all([
+        api.listApiKeys(),
+        api.listOAuthConnections(),
+      ]);
+      setKeys(nextKeys);
+      setConnections(nextConnections);
       setLoadError(null);
     } catch {
-      setLoadError('Could not load API keys.');
+      setLoadError('Could not load AI access settings.');
     }
   }, []);
 
@@ -115,6 +122,21 @@ export default function AiAccess() {
     }
   };
 
+  const handleDisconnect = async (clientId: string) => {
+    const confirmId = `connection:${clientId}`;
+    if (confirmingRevoke !== confirmId) {
+      setConfirmingRevoke(confirmId);
+      return;
+    }
+    try {
+      await api.revokeOAuthConnection(clientId);
+      setConfirmingRevoke(null);
+      await load();
+    } catch {
+      setLoadError('Disconnecting failed. Try again.');
+    }
+  };
+
   return (
     <section className="mb-10">
       <h2 className="font-display font-extrabold text-xl tracking-tight mb-1.5">AI access</h2>
@@ -132,6 +154,41 @@ export default function AiAccess() {
       <div className="mb-5">
         <CodeLine text={MCP_URL} />
       </div>
+
+      {connections.length > 0 && (
+        <>
+          <p className="text-xs font-bold uppercase tracking-wide text-muted mb-1.5">
+            Connected assistants
+          </p>
+          <div className="bg-surface border border-line rounded-2xl overflow-hidden mb-5">
+            {connections.map((connection, index) => (
+              <div
+                key={connection.client_id}
+                className={`grid grid-cols-[1fr_auto] items-center gap-3.5 px-4.5 py-3.5 ${
+                  index > 0 ? 'border-t border-line' : ''
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="block font-semibold truncate">{connection.name}</span>
+                  <span className="block text-[12.5px] text-muted">
+                    Read and write · Connected{' '}
+                    <span className="font-mono tnum">{formatDay(connection.connected_at)}</span>
+                  </span>
+                </span>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleDisconnect(connection.client_id)}
+                >
+                  {confirmingRevoke === `connection:${connection.client_id}`
+                    ? 'Confirm disconnect'
+                    : 'Disconnect'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <p className="text-xs font-bold uppercase tracking-wide text-muted mb-1.5">API keys</p>
       {keys.length === 0 ? (
