@@ -10,6 +10,7 @@ import Button from '../../components/ui/button';
 import ChipGroup from '../../components/ui/chip-group';
 import { Field, Input, Select } from '../../components/ui/field';
 import LoadingAnimation from '../../components/loading-animation';
+import AiAccess from './ai-access';
 
 const TYPE_LABEL: Record<PaymentSource['type'], string> = {
   credit_card: 'Credit card',
@@ -187,6 +188,8 @@ export default function Settings() {
             ).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}).`}
         </p>
       </section>
+
+      <AiAccess />
 
       <Dialog
         open={dialogOpen}

@@ -1,5 +1,5 @@
 // API configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Import types
 import { PaymentSource, RecurringPayment } from '../types';
@@ -9,6 +9,17 @@ export interface UserPreferences {
   user_id: string;
   display_currency: string;
   updated_at?: string;
+}
+
+// Personal API key for scripts and AI assistants. The secret itself is only
+// returned once, by createApiKey.
+export interface ApiKey {
+  id: string;
+  name: string;
+  scope: 'read' | 'write';
+  key_hint: string;
+  last_used_at: string | null;
+  created_at: string;
 }
 
 // User type matching better-auth backend
@@ -340,6 +351,48 @@ export const api = {
     }
 
     return result.data;
+  },
+
+  // API keys (session-only on the backend)
+  async listApiKeys(): Promise<ApiKey[]> {
+    const response = await fetch(`${API_URL}/api/api-keys`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<ApiKey[]> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    return result.data || [];
+  },
+
+  async createApiKey(name: string, scope: ApiKey['scope']): Promise<ApiKey & { key: string }> {
+    const response = await fetch(`${API_URL}/api/api-keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, scope })
+    });
+    const result: ApiResponse<ApiKey & { key: string }> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to create API key');
+    }
+
+    return result.data;
+  },
+
+  async revokeApiKey(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/api-keys/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const result: ApiResponse<null> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
   }
 };
 

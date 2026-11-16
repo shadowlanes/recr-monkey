@@ -6,6 +6,8 @@ import paymentSourcesRouter from './paymentSources';
 import recurringPaymentsRouter from './recurringPayments';
 import ratesRouter from './rates';
 import preferencesRouter from './preferences';
+import apiKeysRouter from './apiKeys';
+import { mcpRouter } from './mcp/route';
 import { runMigrations } from './database';
 
 const app = express();
@@ -16,6 +18,25 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://recr.shadowlanes.com'
 ];
+
+// Bearer-token endpoints for non-browser and third-party clients: any origin,
+// never cookies. Mounted ahead of the credentialed allowlist below.
+const openCors = cors({
+  origin: true,
+  credentials: false,
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Mcp-Protocol-Version',
+    'Mcp-Session-Id',
+    'Last-Event-ID',
+  ],
+  exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'],
+});
+
+app.use('/mcp', openCors, express.json(), mcpRouter);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -62,6 +83,7 @@ app.use('/api/recurring-payments', recurringPaymentsRouter);
 app.use('/api/payment-sources', paymentSourcesRouter);
 app.use('/api/rates', ratesRouter);
 app.use('/api/preferences', preferencesRouter);
+app.use('/api/api-keys', apiKeysRouter);
 
 // Health check
 app.get('/', (req, res) => {

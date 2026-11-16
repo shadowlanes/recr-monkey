@@ -7,7 +7,7 @@
     "build": "tsc",
     "migrate:better-auth": "npx @better-auth/cli@latest migrate --config src/auth-config.ts -y",
     "migrate:app": "node migrate.js",
-    "migrate": "npm run migrate:app && npm run migrate:better-auth",
+    "migrate": "npm run migrate:better-auth && npm run migrate:app",
     "start": "node dist/index.js",
     "startDocker": "npm run migrate && node dist/index.js",
     "dev": "node --env-file-if-exists=.env -r ts-node/register src/index.ts",

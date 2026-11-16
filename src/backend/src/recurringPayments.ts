@@ -55,7 +55,8 @@ router.get('/summary', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const created = await createSubscription(req.user!.id, req.body, 'web');
+    const via = req.principal?.via === 'session' ? 'web' : 'api';
+    const created = await createSubscription(req.user!.id, req.body, via);
     res.json({ data: [created], error: null });
   } catch (error) {
     sendError(res, error, 'Failed to create recurring payment');
