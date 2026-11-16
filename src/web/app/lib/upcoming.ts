@@ -1,3 +1,5 @@
+// DUPLICATED between src/web/app/lib and src/backend/src/lib.
+// Change both copies together; both have unit tests.
 // Charge-date math for recurring payments. All dates are local.
 
 import { Frequency } from './money';

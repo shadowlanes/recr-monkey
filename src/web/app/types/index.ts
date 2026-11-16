@@ -22,5 +22,6 @@ export interface RecurringPayment {
   payment_source_id: string | null;
   start_date: string;
   category: string | null;
+  created_via?: string;
   created_at?: string;
 }

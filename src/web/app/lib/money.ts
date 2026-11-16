@@ -1,3 +1,5 @@
+// DUPLICATED between src/web/app/lib and src/backend/src/lib.
+// Change both copies together; both have unit tests.
 // Pure money utilities: conversion, normalization, formatting.
 // Rates are USD-based: rates[CUR] = units of CUR per 1 USD.
 

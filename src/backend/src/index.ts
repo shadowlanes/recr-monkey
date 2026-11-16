@@ -76,20 +76,5 @@ app.get('/', (req, res) => {
 initializeDatabase().then(() => {
   app.listen(port, '0.0.0.0', () => {
     console.log(`Backend API listening on port ${port}`);
-    console.log('Available endpoints:');
-    console.log('  - POST /api/auth/signup');
-    console.log('  - POST /api/auth/signin');
-    console.log('  - POST /api/auth/signout');
-    console.log('  - GET  /api/auth/user');
-    console.log('  - POST /api/auth/oauth/:provider');
-    console.log('  - GET  /api/payment-sources');
-    console.log('  - POST /api/payment-sources');
-    console.log('  - PUT  /api/payment-sources/:id');
-    console.log('  - DELETE /api/payment-sources/:id');
-    console.log('  - GET  /api/recurring-payments');
-    console.log('  - GET  /api/recurring-payments/check');
-    console.log('  - POST /api/recurring-payments');
-    console.log('  - PUT  /api/recurring-payments/:id');
-    console.log('  - DELETE /api/recurring-payments/:id');
   });
 });
