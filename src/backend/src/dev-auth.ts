@@ -8,7 +8,7 @@ import { auth } from './auth-config';
 export const devAuthEnabled =
   process.env.DEV_AUTH_BYPASS === 'true' && process.env.NODE_ENV !== 'production';
 
-const DEV_PASSWORD = 'dev-bypass-password-not-secret';
+export const DEV_PASSWORD = 'dev-bypass-password-not-secret';
 
 const router = Router();
 
