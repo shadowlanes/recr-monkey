@@ -28,13 +28,13 @@ export default function Dialog({ open, onClose, title, children, elevated = fals
 
   return (
     <div
-      className={`fixed inset-0 bg-black/50 flex items-start justify-center overflow-y-auto p-4 ${elevated ? 'z-[60]' : 'z-50'}`}
+      className={`fixed inset-0 bg-scrim flex items-start justify-center overflow-y-auto p-4 ${elevated ? 'z-[60]' : 'z-50'}`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-surface border border-line rounded-2xl w-full max-w-md mt-[6vh] p-6 shadow-2xl motion-safe:animate-[dialog-pop_.18s_ease-out]">
-        <h2 className="font-display font-extrabold text-xl tracking-tight mb-5">{title}</h2>
+      <div className="bg-surface rounded-[28px] w-full max-w-md mt-[6vh] p-7 shadow-float motion-safe:animate-[dialog-pop_.18s_ease-out]">
+        <h2 className="font-display font-extrabold text-[22px] tracking-tight mb-5">{title}</h2>
         {children}
       </div>
     </div>

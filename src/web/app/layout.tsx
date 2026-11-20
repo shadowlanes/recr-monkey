@@ -1,22 +1,23 @@
 import { AuthProvider } from './components/auth/auth-provider';
 import type { Metadata } from 'next'
-import { Schibsted_Grotesk, Spline_Sans, Spline_Sans_Mono } from 'next/font/google'
+import { Bricolage_Grotesque, DM_Sans, DM_Mono } from 'next/font/google'
 import './globals.css'
 
-const schibsted = Schibsted_Grotesk({
+const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
   weight: ['500', '700', '800'],
-  variable: '--font-schibsted',
+  variable: '--font-bricolage',
 });
-const splineSans = Spline_Sans({
+const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-spline',
+  variable: '--font-dm-sans',
 });
-const splineMono = Spline_Sans_Mono({
+// DM Mono ships 300/400/500 only: money uses font-medium, never bold
+const dmMono = DM_Mono({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-spline-mono',
+  weight: ['400', '500'],
+  variable: '--font-dm-mono',
 });
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${schibsted.variable} ${splineSans.variable} ${splineMono.variable}`}>
+      <body className={`${bricolage.variable} ${dmSans.variable} ${dmMono.variable}`}>
         <AuthProvider>
           <main>{children}</main>
         </AuthProvider>

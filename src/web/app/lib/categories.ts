@@ -31,8 +31,23 @@ const CATEGORY_VAR: Record<string, string> = {
   Debt: '--cat-other',
 };
 
+function categoryVar(category: string | null): string {
+  return CATEGORY_VAR[category || 'Other'] || '--cat-other';
+}
+
+/** Saturated-ish pastel for bars and dots. */
 export function categoryColor(category: string | null): string {
-  return `var(${CATEGORY_VAR[category || 'Other'] || '--cat-other'})`;
+  return `var(${categoryVar(category)})`;
+}
+
+/** Pale fill for chips and date tiles. */
+export function categorySoft(category: string | null): string {
+  return `var(${categoryVar(category)}-soft)`;
+}
+
+/** Text color that reads on the soft fill. */
+export function categoryInk(category: string | null): string {
+  return `var(${categoryVar(category)}-ink)`;
 }
 
 export function categoryLabel(category: string | null): string {

@@ -39,7 +39,7 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
 
 function CodeLine({ text, copyLabel }: { text: string; copyLabel?: string }) {
   return (
-    <div className="flex items-start gap-2.5 bg-bg border border-line rounded-xl pl-3 pr-2 py-2">
+    <div className="flex items-start gap-2.5 bg-bg border border-line rounded-2xl pl-3 pr-2 py-2">
       <code className="flex-1 min-w-0 font-mono text-[12.5px] leading-relaxed break-all select-all py-0.5">
         {text}
       </code>
@@ -160,7 +160,7 @@ export default function AiAccess() {
           <p className="text-xs font-bold uppercase tracking-wide text-muted mb-1.5">
             Connected assistants
           </p>
-          <div className="bg-surface border border-line rounded-2xl overflow-hidden mb-5">
+          <div className="card overflow-hidden mb-5">
             {connections.map((connection, index) => (
               <div
                 key={connection.client_id}
@@ -192,11 +192,11 @@ export default function AiAccess() {
 
       <p className="text-xs font-bold uppercase tracking-wide text-muted mb-1.5">API keys</p>
       {keys.length === 0 ? (
-        <p className="text-muted text-sm bg-surface border border-line rounded-2xl px-5 py-6 mb-3.5">
+        <p className="text-muted text-sm card px-5 py-6 mb-3.5">
           No API keys yet. Create one to connect an assistant or a script.
         </p>
       ) : (
-        <div className="bg-surface border border-line rounded-2xl overflow-hidden mb-3.5">
+        <div className="card overflow-hidden mb-3.5">
           {keys.map((key, index) => (
             <div
               key={key.id}

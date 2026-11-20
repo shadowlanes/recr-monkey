@@ -3,7 +3,7 @@
 import React from 'react';
 
 const CONTROL_CLASSES =
-  'w-full text-[15px] font-medium text-ink bg-bg border-[1.5px] border-line rounded-xl px-3 py-2.5 focus:border-accent focus:outline-none transition-colors';
+  'w-full text-[15px] font-medium text-ink bg-bg border-[1.5px] border-line rounded-2xl px-3.5 py-2.5 focus:border-accent focus:outline-none transition-colors';
 
 interface FieldProps {
   label: string;
@@ -17,7 +17,7 @@ export function Field({ label, htmlFor, hint, children }: FieldProps) {
     <div className="mb-4">
       <label
         htmlFor={htmlFor}
-        className="block text-xs font-bold uppercase tracking-wide text-muted mb-1.5"
+        className="block text-[13px] font-semibold text-ink-soft mb-1.5"
       >
         {label}
       </label>

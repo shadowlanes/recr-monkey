@@ -6,7 +6,7 @@ import { useSettings } from '../../contexts/settings-context';
 import { usePaymentDialog } from '../payment-dialog';
 import { convert, monthlyAmount, formatMoney, FREQUENCY_SHORT } from '../../lib/money';
 import { nextChargeDate, startOfDay } from '../../lib/upcoming';
-import { categoryColor, categoryLabel } from '../../lib/categories';
+import { categoryInk, categoryLabel, categorySoft } from '../../lib/categories';
 import EmptyState from '../../components/ui/empty-state';
 import Button from '../../components/ui/button';
 import LoadingAnimation from '../../components/loading-animation';
@@ -86,12 +86,12 @@ export default function Subscriptions() {
   }
 
   const headerClass =
-    'text-left px-4 py-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted whitespace-nowrap border-b-2 border-ink';
+    'text-left px-4 py-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted whitespace-nowrap border-b border-line';
   const sortableClass = `${headerClass} cursor-pointer select-none hover:text-accent`;
 
   return (
     <section>
-      <h2 className="font-display font-extrabold text-xl tracking-tight mb-3.5">
+      <h2 className="font-display font-extrabold text-2xl tracking-tight mb-3.5">
         All subscriptions
       </h2>
 
@@ -101,7 +101,7 @@ export default function Subscriptions() {
         </p>
       )}
 
-      <div className="bg-surface border border-line rounded-2xl overflow-x-auto">
+      <div className="card overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse">
           <thead>
             <tr>
@@ -124,18 +124,17 @@ export default function Subscriptions() {
           </thead>
           <tbody>
             {rows.map(({ payment, monthly, next, source }) => {
-              const color = categoryColor(payment.category);
               return (
                 <tr
                   key={payment.id}
                   onClick={() => openEdit(payment)}
-                  className="border-b border-line cursor-pointer hover:bg-accent-soft transition-colors"
+                  className="border-b border-line cursor-pointer hover:bg-hover transition-colors"
                 >
                   <td className="px-4 py-3 text-sm font-semibold">{payment.name}</td>
                   <td className="px-4 py-3">
                     <span
                       className="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap"
-                      style={{ color, background: `color-mix(in srgb, ${color} 14%, transparent)` }}
+                      style={{ color: categoryInk(payment.category), background: categorySoft(payment.category) }}
                     >
                       {categoryLabel(payment.category)}
                     </span>
@@ -144,14 +143,14 @@ export default function Subscriptions() {
                     {source ? `${source.name} ···${source.identifier}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-right font-mono tnum whitespace-nowrap">
-                    <span className="font-bold text-sm">
+                    <span className="font-medium text-sm">
                       {formatMoney(payment.amount, payment.currency)}
                     </span>{' '}
                     <span className="text-[11px] font-sans font-medium text-muted">
                       /{FREQUENCY_SHORT[payment.frequency]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tnum text-sm font-semibold text-muted whitespace-nowrap">
+                  <td className="px-4 py-3 text-right font-mono tnum text-sm font-medium text-muted whitespace-nowrap">
                     {rates ? formatMoney(monthly, displayCurrency) : '…'}
                   </td>
                   <td className="px-4 py-3 font-mono tnum text-[13px] text-muted whitespace-nowrap">
@@ -166,7 +165,7 @@ export default function Subscriptions() {
               <td colSpan={4} className="px-4 py-3 text-sm font-bold">
                 Total
               </td>
-              <td className="px-4 py-3 text-right font-mono tnum text-sm font-bold whitespace-nowrap">
+              <td className="px-4 py-3 text-right font-mono tnum text-sm font-medium whitespace-nowrap">
                 {total === null ? '…' : `${formatMoney(total, displayCurrency)} /mo`}
               </td>
               <td />
