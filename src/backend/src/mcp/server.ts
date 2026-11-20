@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { Principal } from '../principal';
+import { MCP_INSTRUCTIONS } from './instructions';
 import { ServiceError } from '../services/errors';
 import { listSources } from '../services/paymentSources';
 import {
@@ -52,7 +53,10 @@ const subscriptionFields = {
 // One server per request, scoped to the authenticated caller.
 export function buildMcpServer(principal: Principal): McpServer {
   const userId = principal.userId;
-  const server = new McpServer({ name: 'recr-monkey', version: '1.0.0' });
+  const server = new McpServer(
+    { name: 'recr-monkey', version: '1.0.0' },
+    { instructions: MCP_INSTRUCTIONS },
+  );
 
   server.registerTool(
     'list_subscriptions',

@@ -104,6 +104,8 @@ curl -H "Authorization: Bearer recr_..." http://localhost:3001/api/recurring-pay
 
 ### MCP tools
 
+Assistants discover these automatically: each tool describes itself, and the server sends a short rules-of-use text on connect (`src/backend/src/mcp/instructions.ts`). For plain HTTP clients, the REST API is described at `GET /openapi.json` (OpenAPI 3.0, public, no data). Request bodies in the spec come from the same zod schemas the services validate with; paths and responses are written by hand in `src/backend/src/openapi.ts`, so update it when you change a route.
+
 | Tool | What it does | Needs write |
 |---|---|---|
 | `list_subscriptions` | All subscriptions with native amount, currency, frequency | |

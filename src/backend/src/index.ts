@@ -1,3 +1,4 @@
+import openApiRouter from './openapi';
 import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import cors from 'cors';
 import { fromNodeHeaders } from 'better-auth/node';
@@ -59,6 +60,7 @@ app.get(
   openCors,
   toExpress(oAuthDiscoveryMetadata(auth)),
 );
+app.use('/openapi.json', openCors, openApiRouter);
 app.get(
   ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/*'],
   openCors,
