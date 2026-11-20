@@ -64,8 +64,9 @@ via USD-based rates from `GET /api/rates` (backend fetches open.er-api.com,
 
 ## Frontend map (src/web/app/)
 
-- `layout.tsx` — root: fonts (Schibsted Grotesk = display, Spline Sans = body,
-  Spline Sans Mono = money/dates) + AuthProvider.
+- `layout.tsx` — root: fonts (Bricolage Grotesque = display, DM Sans = body,
+  DM Mono = money/dates; DM Mono has no bold, so money uses `font-medium`) +
+  AuthProvider.
 - `page.tsx` — public landing + auth card; redirects signed-in users to
   /dashboard.
 - `dashboard/layout.tsx` — auth gate + providers (Data, Settings,
@@ -90,10 +91,14 @@ via USD-based rates from `GET /api/rates` (backend fetches open.er-api.com,
 
 ## Conventions
 
+- Theme is "soft pastel" (Nov 2026): lavender ground, white `card` utility
+  (rounded, borderless, soft shadow), periwinkle accent. Each category has a
+  token triple — `--cat-x` (bar/dot), `--cat-x-soft` (fill), `--cat-x-ink`
+  (text on fill) — via `categoryColor/categorySoft/categoryInk`.
 - **No hardcoded colors.** All color/type comes from tokens in `globals.css`,
   mapped to Tailwind utilities via `@theme inline` (`bg-surface`, `text-ink`,
-  `text-muted`, `bg-accent`, `border-line`, …). Dark mode is automatic via
-  `prefers-color-scheme` on the same tokens.
+  `text-muted`, `bg-accent`, `border-line`, …). Light only — there is
+  deliberately no dark mode.
 - Money and dates render in the mono font with `tnum` (tabular numerals).
 - `'4weeks'` frequency is legacy: supported in math and editing, hidden from
   the add flow.

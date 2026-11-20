@@ -2,73 +2,144 @@
 
 /*
  * Design tokens — the single source of truth for color and type.
- * Light palette on :root, dark palette via prefers-color-scheme.
- * Components use Tailwind utilities mapped below (bg-surface, text-ink, …)
- * and never hardcode hex values.
+ * "Soft pastel" theme: lavender ground, white cards, periwinkle accent,
+ * one pastel family per category (soft fill / ink text / bar).
+ * Light only: the app always renders this palette, whatever the OS setting.
+ * Components use Tailwind utilities mapped below (bg-surface, text-ink,
+ * bg-cat-housing-soft, …) and never hardcode hex values.
  */
 :root {
-  --bg: #f6f2ea;
+  --bg: #f5f2fa;
   --surface: #ffffff;
-  --ink: #1c1712;
-  --muted: #766c5d;
-  --accent: #e8541d;
-  --accent-deep: #c44113;
-  --accent-soft: #fbe5d8;
-  --panel-ink: #fff6ef;
-  --line: #e7e0d4;
+  --hover: #f7f4ff;
+  --ink: #2a2440;
+  --ink-soft: #4a4366;
+  --muted: #5e5878;
+  --line: #e8e3f2;
+
+  --accent: #5b4bd6;
+  --accent-deep: #4b3cc4;
+  --accent-soft: #ede8ff;
+  --on-accent: #ffffff;
+  --accent-glow: rgb(91 75 214 / 0.28);
+
+  /* Spend hero + its decorative blobs */
+  --hero: #e4dcff;
+  --hero-chip: rgb(255 255 255 / 0.75);
+  --blob-1: #cdefd9;
+  --blob-2: #fddcc7;
+  --blob-3: #fcebb0;
+
+  /* Heads-up note card */
+  --note: #fcebb0;
+  --note-ink: #4d3a00;
+  --note-ink-soft: #5c4600;
+
   --danger: #c0392b;
-  --danger-soft: #fae3df;
+  --danger-soft: #fbe3e0;
 
-  /* Category palette */
-  --cat-housing: #e8541d;
-  --cat-entertainment: #f2b718;
-  --cat-subscription: #1e8a5b;
-  --cat-utilities: #1769aa;
-  --cat-health: #c2358b;
-  --cat-insurance: #6d4acd;
-  --cat-transport: #b35a2a;
-  --cat-other: #8d8578;
-}
+  --shadow-card: 0 1px 2px rgb(42 36 64 / 0.05);
+  --shadow-float: 0 8px 24px rgb(42 36 64 / 0.08);
+  --scrim: rgb(42 36 64 / 0.45);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161210;
-    --surface: #211c17;
-    --ink: #f3eee6;
-    --muted: #a79c8c;
-    --accent: #f0632b;
-    --accent-deep: #d14f1a;
-    --accent-soft: #3c2518;
-    --panel-ink: #fff3ea;
-    --line: #39332a;
-    --danger: #e0604f;
-    --danger-soft: #42221d;
-    color-scheme: dark;
-  }
+  /* Category palette: soft fill, ink (text on soft), bar (chart/dots) */
+  --cat-housing-soft: #fddcc7;
+  --cat-housing-ink: #8a3e12;
+  --cat-housing: #f6ae85;
+  --cat-entertainment-soft: #fad4e6;
+  --cat-entertainment-ink: #8f2a5c;
+  --cat-entertainment: #f0a3c8;
+  --cat-subscription-soft: #e4dcff;
+  --cat-subscription-ink: #4b3cc4;
+  --cat-subscription: #b3a5f5;
+  --cat-utilities-soft: #cfe6fb;
+  --cat-utilities-ink: #1f5a8a;
+  --cat-utilities: #8ec3ee;
+  --cat-health-soft: #cdefd9;
+  --cat-health-ink: #1f6b45;
+  --cat-health: #86d3a3;
+  --cat-insurance-soft: #fcebb0;
+  --cat-insurance-ink: #6e5100;
+  --cat-insurance: #efcb5c;
+  --cat-transport-soft: #d3f1ef;
+  --cat-transport-ink: #1d6762;
+  --cat-transport: #7fd0c9;
+  --cat-other-soft: #ebe8f1;
+  --cat-other-ink: #4f4a63;
+  --cat-other: #c2bccf;
+
+  color-scheme: light;
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-hover: var(--hover);
   --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
   --color-muted: var(--muted);
+  --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-deep: var(--accent-deep);
   --color-accent-soft: var(--accent-soft);
-  --color-panel-ink: var(--panel-ink);
-  --color-line: var(--line);
+  --color-on-accent: var(--on-accent);
+  --color-hero: var(--hero);
+  --color-hero-chip: var(--hero-chip);
+  --color-blob-1: var(--blob-1);
+  --color-blob-2: var(--blob-2);
+  --color-blob-3: var(--blob-3);
+  --color-note: var(--note);
+  --color-note-ink: var(--note-ink);
+  --color-note-ink-soft: var(--note-ink-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-scrim: var(--scrim);
 
-  --font-display: var(--font-schibsted);
-  --font-sans: var(--font-spline);
-  --font-mono: var(--font-spline-mono);
+  --color-cat-housing: var(--cat-housing);
+  --color-cat-housing-soft: var(--cat-housing-soft);
+  --color-cat-housing-ink: var(--cat-housing-ink);
+  --color-cat-entertainment: var(--cat-entertainment);
+  --color-cat-entertainment-soft: var(--cat-entertainment-soft);
+  --color-cat-entertainment-ink: var(--cat-entertainment-ink);
+  --color-cat-subscription: var(--cat-subscription);
+  --color-cat-subscription-soft: var(--cat-subscription-soft);
+  --color-cat-subscription-ink: var(--cat-subscription-ink);
+  --color-cat-utilities: var(--cat-utilities);
+  --color-cat-utilities-soft: var(--cat-utilities-soft);
+  --color-cat-utilities-ink: var(--cat-utilities-ink);
+  --color-cat-health: var(--cat-health);
+  --color-cat-health-soft: var(--cat-health-soft);
+  --color-cat-health-ink: var(--cat-health-ink);
+  --color-cat-insurance: var(--cat-insurance);
+  --color-cat-insurance-soft: var(--cat-insurance-soft);
+  --color-cat-insurance-ink: var(--cat-insurance-ink);
+  --color-cat-transport: var(--cat-transport);
+  --color-cat-transport-soft: var(--cat-transport-soft);
+  --color-cat-transport-ink: var(--cat-transport-ink);
+  --color-cat-other: var(--cat-other);
+  --color-cat-other-soft: var(--cat-other-soft);
+  --color-cat-other-ink: var(--cat-other-ink);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
+  --shadow-glow: 0 6px 16px var(--accent-glow);
+
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-dm-mono);
+}
+
+/* The standard white card: rounded, borderless, soft lift */
+@utility card {
+  background: var(--surface);
+  border-radius: 28px;
+  box-shadow: var(--shadow-card);
 }
 
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-spline), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
 }
 
 /* Money and dates everywhere align in columns */

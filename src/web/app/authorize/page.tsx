@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../components/auth/auth-provider';
 import AuthForm from '../components/auth/auth-form';
 import Button from '../components/ui/button';
+import Logo from '../components/ui/logo';
 import LoadingAnimation from '../components/loading-animation';
 import { api, API_URL, OAuthClientInfo } from '../lib/api-client';
 
@@ -18,7 +19,7 @@ const PERMISSIONS = [
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-surface border border-line rounded-2xl p-7 shadow-sm">{children}</div>
+    <div className="card p-7">{children}</div>
   );
 }
 
@@ -132,7 +133,7 @@ function Consent() {
       </p>
 
       <p className="text-xs font-bold uppercase tracking-wide text-muted mb-2">It will be able to</p>
-      <ul className="bg-bg border border-line rounded-xl mb-5">
+      <ul className="bg-bg border border-line rounded-2xl mb-5">
         {PERMISSIONS.map((permission, index) => (
           <li
             key={permission}
@@ -166,9 +167,7 @@ export default function AuthorizePage() {
   return (
     <div className="max-w-md mx-auto px-4 pb-14">
       <header className="py-5 mb-8">
-        <span className="font-display font-extrabold text-[19px] tracking-tight">
-          recr<span className="text-accent">·</span>monkey
-        </span>
+        <Logo />
       </header>
       <Suspense
         fallback={

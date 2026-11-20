@@ -123,15 +123,15 @@ export default function Settings() {
       )}
 
       <section className="mb-10">
-        <h2 className="font-display font-extrabold text-xl tracking-tight mb-3.5">
+        <h2 className="font-display font-extrabold text-2xl tracking-tight mb-3.5">
           Payment sources
         </h2>
         {paymentSources.length === 0 ? (
-          <p className="text-muted text-sm bg-surface border border-line rounded-2xl px-5 py-6 mb-3.5">
+          <p className="text-muted text-sm card px-5 py-6 mb-3.5">
             No payment sources yet. They are optional — a subscription never requires one.
           </p>
         ) : (
-          <div className="bg-surface border border-line rounded-2xl overflow-hidden mb-3.5">
+          <div className="card overflow-hidden mb-3.5">
             {paymentSources.map((source, index) => {
               const count = subscriptionCount(source.id);
               return (
@@ -139,11 +139,11 @@ export default function Settings() {
                   key={source.id}
                   type="button"
                   onClick={() => openEdit(source)}
-                  className={`w-full grid grid-cols-[44px_1fr_auto] items-center gap-3.5 px-4.5 py-3.5 text-left cursor-pointer hover:bg-accent-soft transition-colors ${
+                  className={`w-full grid grid-cols-[44px_1fr_auto] items-center gap-3.5 px-4.5 py-3.5 text-left cursor-pointer hover:bg-hover transition-colors ${
                     index > 0 ? 'border-t border-line' : ''
                   }`}
                 >
-                  <span className="w-11 h-[30px] rounded-md bg-ink text-bg font-mono font-bold text-[10px] tracking-widest flex items-center justify-center">
+                  <span className="w-11 h-11 rounded-[14px] bg-accent-soft text-accent-deep font-mono font-medium text-[10px] tracking-widest flex items-center justify-center">
                     {source.type === 'bank_account' ? 'BANK' : 'CARD'}
                   </span>
                   <span className="min-w-0">
@@ -152,7 +152,7 @@ export default function Settings() {
                       {TYPE_LABEL[source.type]} · {count} subscription{count === 1 ? '' : 's'}
                     </span>
                   </span>
-                  <span className="font-mono tnum font-semibold text-muted">
+                  <span className="font-mono tnum font-medium text-muted">
                     ···{source.identifier}
                   </span>
                 </button>
@@ -169,7 +169,7 @@ export default function Settings() {
       </section>
 
       <section className="mb-10">
-        <h2 className="font-display font-extrabold text-xl tracking-tight mb-3.5">
+        <h2 className="font-display font-extrabold text-2xl tracking-tight mb-3.5">
           Display currency
         </h2>
         <ChipGroup

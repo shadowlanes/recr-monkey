@@ -82,7 +82,7 @@ export default function AuthForm({ stayOnPage = false }: AuthFormProps) {
   };
 
   return (
-    <div className="bg-surface border border-line rounded-2xl p-7 shadow-sm">
+    <div className="card p-7">
       <h2 className="font-display font-extrabold text-xl tracking-tight mb-1">
         {isSignUp ? 'Create your account' : 'Welcome back'}
       </h2>

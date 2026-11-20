@@ -33,8 +33,8 @@ export default function ChipGroup<T extends string>({
             onClick={() => onChange(option.value)}
             className={`rounded-full px-4 py-2 text-[13.5px] cursor-pointer transition-colors border-[1.5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${
               selected
-                ? 'bg-ink border-ink text-bg font-bold'
-                : 'bg-bg border-line text-muted font-semibold hover:text-ink'
+                ? 'bg-accent-soft border-accent text-ink font-bold'
+                : 'bg-surface border-line text-muted font-semibold hover:text-ink'
             }`}
           >
             {option.label}
