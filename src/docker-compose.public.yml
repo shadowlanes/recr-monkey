@@ -1,0 +1,38 @@
+# Public mode: exposes the app through a Cloudflare tunnel so cloud AI
+# assistants can reach the MCP server. Use together with the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.public.yml up -d --build
+#
+# Requires TUNNEL_TOKEN and BETTER_AUTH_SECRET in src/.env, and a tunnel with
+# two public hostnames on one domain:
+#   WEB_HOST -> http://web:3000      API_HOST -> http://backend:3001
+# Read "Connect a cloud assistant" in the README before using this.
+
+services:
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_HOST:-api.recr.shadowlanes.com}
+        NEXT_PUBLIC_DEV_AUTH: "false"
+
+  backend:
+    environment:
+      - NODE_ENV=production
+      # Never enable dev login on a public URL: anyone could sign in as anyone.
+      - DEV_AUTH_BYPASS=false
+      - DISABLE_SIGNUP=${DISABLE_SIGNUP:-true}
+      - BETTER_AUTH_URL=https://${API_HOST:-api.recr.shadowlanes.com}
+      - NEXT_PUBLIC_URL=https://${WEB_HOST:-recr.shadowlanes.com}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?set a real BETTER_AUTH_SECRET in src/.env}
+      - GOOGLE_REDIRECT_URI=https://${API_HOST:-api.recr.shadowlanes.com}/api/auth/callback/google
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?set TUNNEL_TOKEN in src/.env}
+    depends_on:
+      - web
+      - backend
+    restart: unless-stopped

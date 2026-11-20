@@ -1,11 +1,24 @@
 # recr-monkey
-Track all your recurring payments and subscriptions
+Track all your recurring payments and subscriptions.
+
+One number for your monthly spend, a 30-day view of upcoming charges, and
+multi-currency support: each subscription keeps its billing currency
+(INR, USD, AED, …) while totals convert to a per-user display currency
+using daily exchange rates.
+
+## App Screens
+
+- **Overview** (`/dashboard`) — monthly-spend hero, upcoming 30-day agenda, category breakdown
+- **Subscriptions** (`/dashboard/subscriptions`) — sortable table with normalized monthly cost
+- **Settings** (`/dashboard/settings`) — payment sources (optional metadata) and display currency
+- A global quick-add dialog: only name, amount, and frequency are required
 
 ## Project Structure
 
 - `src/web/` - Next.js frontend application
 - `src/backend/` - Node.js/Express TypeScript backend API
 - `src/backend/migrations/` - Database migration files
+- `docs/mcp-plan.md` - Design notes for the AI access features
 
 ## Authentication
 
@@ -15,50 +28,136 @@ This project uses [better-auth](https://www.better-auth.com/) for authentication
 
 ### Database Schema Management
 
-Better-auth manages its own database tables (`user`, `session`, `account`, `verification`) automatically. Application-specific tables (`payment_sources`, `recurring_payments`) are managed through custom migrations.
-
-#### Running Better-Auth Migrations
-
-After starting the database, run the better-auth migration command to create/update authentication tables:
-
-```bash
-cd src/backend
-DB_HOST=localhost DB_PORT=5432 DB_NAME=recr_monkey_db DB_USER=user DB_PASSWORD=password \
-  npx @better-auth/cli@latest migrate --config src/auth-config.ts -y
-```
-
-**Note:** The `-y` flag auto-confirms the migration. Remove it if you want to review changes before applying.
-
-#### For Docker Setup
-
-If running in Docker, the backend container automatically runs custom migrations on startup. After the containers are up, run the better-auth migration from your host machine:
-
-```bash
-cd src/backend
-DB_HOST=localhost DB_PORT=5432 DB_NAME=recr_monkey_db DB_USER=user DB_PASSWORD=password \
-  npx @better-auth/cli@latest migrate --config src/auth-config.ts -y
-```
+Better-auth manages its own tables (`user`, `session`, `account`, `verification`).
+App tables (`payment_sources`, `recurring_payments`, `user_preferences`) come from
+the custom migrations. Both run automatically on backend start.
 
 ## Development Setup
 
+Requires a Postgres on `localhost:5432` (user `user`, password `password`) with an
+empty database `recr_monkey_db`:
+
+```bash
+createdb -h localhost -U user recr_monkey_db
+```
+
 ### Using Docker
 
-1. Start all services:
 ```bash
 cd src
-docker compose up -d
+docker compose up -d --build
 ```
 
-2. Run better-auth migrations:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+
+### Without Docker
+
 ```bash
-cd backend
-DB_HOST=localhost DB_PORT=5432 DB_NAME=recr_monkey_db DB_USER=user DB_PASSWORD=password \
-  npx @better-auth/cli@latest migrate --config src/auth-config.ts -y
+cd src/backend && npm install && npm run migrate && npm run dev   # :3001
+cd src/web && npm install && npm run dev                          # :3000
 ```
 
-3. Access the application:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
+### Local dev login
+
+With `DEV_AUTH_BYPASS=true` (backend) and `NEXT_PUBLIC_DEV_AUTH=true` (web), any
+email/password signs in (the user is auto-created). Ignored when
+`NODE_ENV=production`.
+
+## AI access (MCP and API keys)
+
+An AI assistant can read and manage your subscriptions through the built-in
+[MCP](https://modelcontextprotocol.io) server at `POST /mcp`, or through the
+REST API. Both accept the same credentials.
+
+### API keys
+
+Create a key under **Settings → AI access**. A key is either read-only or
+read-and-write, is shown once, and is stored only as a hash. Revoking it cuts
+off access immediately.
+
+Claude Code:
+
+```bash
+claude mcp add --transport http recr-monkey http://localhost:3001/mcp \
+  --header "Authorization: Bearer recr_..."
+```
+
+Gemini CLI (`~/.gemini/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "recr-monkey": {
+      "httpUrl": "http://localhost:3001/mcp",
+      "headers": { "Authorization": "Bearer recr_..." }
+    }
+  }
+}
+```
+
+REST with the same key:
+
+```bash
+curl -H "Authorization: Bearer recr_..." http://localhost:3001/api/recurring-payments/upcoming?days=14
+```
+
+### MCP tools
+
+| Tool | What it does | Needs write |
+|---|---|---|
+| `list_subscriptions` | All subscriptions with native amount, currency, frequency | |
+| `get_upcoming_charges` | Charges due in the next N days (default 30) | |
+| `get_spend_summary` | Monthly and yearly totals in the display currency, by category | |
+| `list_payment_sources` | Cards and accounts subscriptions can attach to | |
+| `add_subscription` | Add a recurring payment | yes |
+| `update_subscription` | Change some fields of a subscription | yes |
+| `delete_subscription` | Delete a subscription | yes |
+
+A read-only key does not see the write tools.
+
+### Connect a cloud assistant (OAuth)
+
+Assistants that run in the cloud (Claude on the web, ChatGPT connectors) call
+the server from the internet and sign in with OAuth instead of a key. The
+server implements discovery, dynamic client registration and PKCE. Before any
+access is granted you see a consent page naming the assistant, and you can
+disconnect it later under **Settings → AI access**.
+
+This needs the app to be reachable over HTTPS on two hostnames of the same
+domain (one for the web app, one for the API). The included override does
+that with a Cloudflare tunnel:
+
+1. In Cloudflare Zero Trust, create a tunnel with two public hostnames:
+   `recr.shadowlanes.com → http://web:3000` and
+   `api.recr.shadowlanes.com → http://backend:3001`.
+2. In `src/.env` set `TUNNEL_TOKEN`, a real `BETTER_AUTH_SECRET`
+   (`openssl rand -base64 32`), and `WEB_HOST` / `API_HOST` if yours differ.
+3. Start in public mode:
+
+   ```bash
+   cd src
+   docker compose -f docker-compose.yml -f docker-compose.public.yml up -d --build
+   ```
+
+4. In the assistant, add a custom connector / MCP server with the URL
+   `https://api.recr.shadowlanes.com/mcp`. Your browser opens the consent page.
+
+> **Warning: read before going public**
+>
+> - **Dev login is off in public mode, and must stay off.** With
+>   `DEV_AUTH_BYPASS=true` on a public URL anyone can sign in as anyone.
+> - **Accounts created through dev login have a password that is in this
+>   repository** (`src/backend/src/dev-auth.ts`). Do not expose an instance
+>   that holds such accounts: sign in with Google, or create a fresh account
+>   with a real password and delete the dev one
+>   (`DELETE FROM "user" WHERE email = '...'`; its data is removed with it).
+> - **Use a real `BETTER_AUTH_SECRET`.** The local default is a known string.
+> - **Sign-up is closed by default** (`DISABLE_SIGNUP=true`). To create your
+>   account, start once with `DISABLE_SIGNUP=false`, sign up, then restart.
+
+Custom MCP servers in the consumer Gemini app are not confirmed to work;
+Gemini CLI works with an API key as shown above.
 
 ### Environment Variables
 
@@ -72,8 +171,9 @@ GOOGLE_REDIRECT_URI=http://localhost:3001/api/auth/callback/google
 
 # Better Auth
 BETTER_AUTH_SECRET=your-random-secret-key
-BETTER_AUTH_URL=http://localhost:3001
-NEXT_PUBLIC_URL=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:3001   # public origin of the API
+NEXT_PUBLIC_URL=http://localhost:3000   # public origin of the web app (CORS, consent page)
+TZ=Asia/Kolkata                         # what "today" means for upcoming charges
 ```
 
 ## API Endpoints
@@ -84,6 +184,10 @@ NEXT_PUBLIC_URL=http://localhost:3000
 - `POST /api/auth/sign-out` - Sign out
 - `GET /api/auth/session` - Get current session
 
+Protected endpoints accept a browser session, an API key
+(`Authorization: Bearer recr_...`) or an OAuth access token. Read-only keys
+are limited to `GET`.
+
 ### Payment Sources (Protected)
 - `GET /api/payment-sources` - List user's payment sources
 - `POST /api/payment-sources` - Create payment source
@@ -92,144 +196,41 @@ NEXT_PUBLIC_URL=http://localhost:3000
 
 ### Recurring Payments (Protected)
 - `GET /api/recurring-payments` - List user's recurring payments
+- `GET /api/recurring-payments/upcoming?days=30` - Charges due in the window, with display-currency totals
+- `GET /api/recurring-payments/summary` - Monthly/yearly spend in the display currency, by category
 - `POST /api/recurring-payments` - Create recurring payment
 - `PUT /api/recurring-payments/:id` - Update recurring payment
 - `DELETE /api/recurring-payments/:id` - Delete recurring payment
 
+`payment_source_id` and `category` are optional (nullable).
+
+### Rates & Preferences
+- `GET /api/rates` - USD-based exchange rates (fetched from open.er-api.com, cached server-side for 24h)
+- `GET /api/preferences` - Current user's preferences (Protected)
+- `PUT /api/preferences` - Update preferences, e.g. `{ "display_currency": "INR" }` (Protected)
+
+### AI access
+- `POST /mcp` - MCP server (Streamable HTTP, bearer auth only)
+- `GET|POST /api/api-keys`, `DELETE /api/api-keys/:id` - Manage API keys (browser session only)
+- `GET /api/oauth/connections`, `DELETE /api/oauth/connections/:clientId` - Connected assistants (browser session only)
+- `GET /.well-known/oauth-protected-resource`, `GET /.well-known/oauth-authorization-server` - OAuth discovery
+
 ## Tech Stack
 
-- **Frontend:** Next.js 15, React, TypeScript, TailwindCSS
+- **Frontend:** Next.js 16, React, TypeScript, TailwindCSS
 - **Backend:** Node.js 24, Express, TypeScript
-- **Database:** PostgreSQL (latest)
+- **Database:** PostgreSQL
 - **Authentication:** better-auth
 - **Containerization:** Docker, Docker Compose
 
-## Railway Deployment
+## Migrations
 
-### Prerequisites
-
-1. Railway account with PostgreSQL addon
-2. Custom domains configured:
-   - Backend: `api.recr.shadowlanes.com`
-   - Frontend: `recr.shadowlanes.com`
-
-### Backend Deployment
-
-1. **Create a new Railway project** and add a PostgreSQL database
-
-2. **Configure environment variables** in Railway:
-   ```bash
-   # Database (automatically set by Railway PostgreSQL addon)
-   DB_HOST=<from Railway>
-   DB_PORT=<from Railway>
-   DB_NAME=<from Railway>
-   DB_USER=<from Railway>
-   DB_PASSWORD=<from Railway>
-   
-   # Better Auth
-   BETTER_AUTH_SECRET=<generate-a-random-32-char-string>
-   BETTER_AUTH_URL=https://api.recr.shadowlanes.com
-   
-   # Google OAuth (optional)
-   GOOGLE_CLIENT_ID=<your-google-client-id>
-   GOOGLE_CLIENT_SECRET=<your-google-client-secret>
-   GOOGLE_REDIRECT_URI=https://api.recr.shadowlanes.com/api/auth/callback/google
-   
-   # Frontend URL
-   FRONTEND_URL=https://recr.shadowlanes.com
-   ```
-
-3. **Deploy the backend:**
-   - Set root directory to `src/backend`
-   - Build command: `npm install && npm run build`
-   - Start command: `npm start` (migrations run automatically via `prestart` script)
-   - Port: Railway will set `PORT` automatically
-
-4. **Configure custom domain:**
-   - Add `api.recr.shadowlanes.com` as custom domain in Railway settings
-
-### Migration Strategy
-
-The backend is configured to automatically run migrations before starting:
-- `startDocker` script in `package.json` runs both application and better-auth migrations
-- Ensures database schema is always up-to-date on each deployment
-- Zero-downtime deployments with automatic schema updates
-
-### Frontend Deployment (Cloudflare Pages)
-
-#### Prerequisites
-1. Cloudflare account
-2. Domain configured: `recr.shadowlanes.com`
-3. Backend already deployed to Railway at `api.recr.shadowlanes.com`
-
-#### Deployment Steps
-
-1. **Push your code to GitHub** (if not already):
-   ```bash
-   git push origin main
-   ```
-
-2. **Connect to Cloudflare Pages:**
-   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
-   - Navigate to **Workers & Pages** → **Create application** → **Pages**
-   - Connect your GitHub repository
-   - Select the `recr-monkey` repository
-
-3. **Configure build settings:**
-   - **Project name:** `recr-monkey`
-   - **Production branch:** `main`
-   - **Framework preset:** Next.js
-   - **Build command:** `npm run build`
-   - **Build output directory:** `.next`
-   - **Root directory:** `src/web`
-
-4. **Set environment variables:**
-   Click on **Environment variables** and add:
-   ```
-   NEXT_PUBLIC_API_URL=https://api.recr.shadowlanes.com
-   ```
-
-5. **Configure custom domain:**
-   - After deployment, go to **Custom domains**
-   - Add `recr.shadowlanes.com`
-   - Update your DNS records as instructed by Cloudflare
-
-6. **Deploy:**
-   - Click **Save and Deploy**
-   - Cloudflare will build and deploy your application
-
-#### Important Notes for Cloudflare Pages
-
-- **Static Export:** Cloudflare Pages works best with Next.js static exports or with their Next.js runtime
-- **Environment Variables:** All API URLs must use `NEXT_PUBLIC_` prefix to be accessible in the browser
-- **CORS:** Ensure your backend at `api.recr.shadowlanes.com` allows requests from `recr.shadowlanes.com`
-- **Automatic Deployments:** Every push to `main` branch will trigger a new deployment
-
-#### Alternative: Using Wrangler CLI
-
-You can also deploy using Cloudflare's CLI:
-
-```bash
-cd src/web
-
-# Install Wrangler
-npm install -g wrangler
-
-# Login to Cloudflare
-wrangler login
-
-# Deploy
-npx @cloudflare/next-on-pages@1
-
-# Or use their Pages integration
-wrangler pages deploy .next --project-name=recr-monkey
-```
+The backend runs app migrations (`src/backend/migrations/`) and the better-auth
+migration automatically on container start (`npm run startDocker`). Never edit an
+applied migration; add a new numbered file.
 
 ### CORS Configuration
 
-The backend is configured to accept requests from:
-- `http://localhost:3000` (development)
-- `https://recr.shadowlanes.com` (production)
-
-If you need to add more origins, update `src/backend/src/index.ts`
-
+The web app's API accepts credentialed requests from `NEXT_PUBLIC_URL` and
+`http://localhost:3000`. `/mcp` and the OAuth discovery, token and
+registration endpoints accept any origin and never use cookies.

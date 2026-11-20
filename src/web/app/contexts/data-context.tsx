@@ -11,7 +11,7 @@ interface DataContextType {
   isLoading: boolean;
   error: string | null;
   updatePaymentSource: (updatedSource: PaymentSource) => Promise<void>;
-  addPaymentSource: (newSource: Omit<PaymentSource, 'id' | 'created_at'>) => Promise<void>;
+  addPaymentSource: (newSource: Omit<PaymentSource, 'id' | 'user_id' | 'created_at'>) => Promise<PaymentSource>;
   deletePaymentSource: (sourceId: string) => Promise<void>;
   updateRecurringPayment: (paymentId: string, updatedPayment: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>) => Promise<boolean>;
   addRecurringPayment: (newPayment: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>) => Promise<boolean>;
@@ -87,20 +87,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Add a new payment source
-  const addPaymentSource = async (newSource: Omit<PaymentSource, 'id' | 'created_at'>) => {
+  // Add a new payment source; returns the created source
+  const addPaymentSource = async (newSource: Omit<PaymentSource, 'id' | 'user_id' | 'created_at'>) => {
     try {
       setError(null);
-      
+
       const data = await api.createPaymentSource({
         name: newSource.name,
         type: newSource.type,
         identifier: newSource.identifier
       });
-      
-      if (data) {
-        setPaymentSources([...paymentSources, data]);
-      }
+
+      setPaymentSources([...paymentSources, data]);
+      return data;
     } catch (error: unknown) {
       console.error('Error adding payment source:', error);
       setError('Failed to add payment source. Please try again.');

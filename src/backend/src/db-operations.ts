@@ -1,5 +1,5 @@
 import { pool } from './database';
-import { PaymentSource, RecurringPayment } from './types';
+import { PaymentSource, RecurringPayment, UserPreferences } from './types';
 
 // Payment Sources Database Operations
 export class PaymentSourcesDB {
@@ -41,15 +41,9 @@ export class PaymentSourcesDB {
     return (rowCount || 0) > 0;
   }
 
-  static async exists(id: string): Promise<boolean> {
-    const query = 'SELECT 1 FROM payment_sources WHERE id = $1';
-    const { rows } = await pool.query(query, [id]);
-    return rows.length > 0;
-  }
-
-  static async isUsedByPayments(paymentSourceId: string): Promise<boolean> {
-    const query = 'SELECT 1 FROM recurring_payments WHERE payment_source_id = $1 LIMIT 1';
-    const { rows } = await pool.query(query, [paymentSourceId]);
+  static async exists(id: string, userId: string): Promise<boolean> {
+    const query = 'SELECT 1 FROM payment_sources WHERE id = $1 AND user_id = $2';
+    const { rows } = await pool.query(query, [id, userId]);
     return rows.length > 0;
   }
 }
@@ -58,13 +52,23 @@ export class PaymentSourcesDB {
 export class RecurringPaymentsDB {
   static async getAll(userId: string): Promise<RecurringPayment[]> {
     const query = `
-      SELECT id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_at
+      SELECT id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_via, created_at
       FROM recurring_payments
       WHERE user_id = $1
       ORDER BY name
     `;
     const { rows } = await pool.query(query, [userId]);
     return rows;
+  }
+
+  static async getById(id: string, userId: string): Promise<RecurringPayment | null> {
+    const query = `
+      SELECT id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_via, created_at
+      FROM recurring_payments
+      WHERE id = $1 AND user_id = $2
+    `;
+    const { rows } = await pool.query(query, [id, userId]);
+    return rows[0] || null;
   }
 
   static async checkExists(userId: string): Promise<boolean> {
@@ -75,9 +79,9 @@ export class RecurringPaymentsDB {
 
   static async create(userId: string, data: Omit<RecurringPayment, 'id' | 'user_id' | 'created_at'>): Promise<RecurringPayment> {
     const query = `
-      INSERT INTO recurring_payments (user_id, name, amount, currency, frequency, payment_source_id, start_date, category)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_at
+      INSERT INTO recurring_payments (user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_via)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_via, created_at
     `;
     const { rows } = await pool.query(query, [
       userId,
@@ -87,7 +91,8 @@ export class RecurringPaymentsDB {
       data.frequency,
       data.payment_source_id,
       data.start_date,
-      data.category
+      data.category,
+      data.created_via
     ]);
     return rows[0];
   }
@@ -97,7 +102,7 @@ export class RecurringPaymentsDB {
       UPDATE recurring_payments
       SET name = $1, amount = $2, currency = $3, frequency = $4, payment_source_id = $5, start_date = $6, category = $7
       WHERE id = $8 AND user_id = $9
-      RETURNING id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_at
+      RETURNING id, user_id, name, amount, currency, frequency, payment_source_id, start_date, category, created_via, created_at
     `;
     const { rows } = await pool.query(query, [
       data.name,
@@ -117,5 +122,26 @@ export class RecurringPaymentsDB {
     const query = 'DELETE FROM recurring_payments WHERE id = $1 AND user_id = $2';
     const { rowCount } = await pool.query(query, [id, userId]);
     return (rowCount || 0) > 0;
+  }
+}
+
+// User Preferences Database Operations
+export class PreferencesDB {
+  static async get(userId: string): Promise<UserPreferences> {
+    const query = 'SELECT user_id, display_currency, updated_at FROM user_preferences WHERE user_id = $1';
+    const { rows } = await pool.query(query, [userId]);
+    return rows[0] || { user_id: userId, display_currency: 'USD' };
+  }
+
+  static async upsert(userId: string, data: Pick<UserPreferences, 'display_currency'>): Promise<UserPreferences> {
+    const query = `
+      INSERT INTO user_preferences (user_id, display_currency, updated_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (user_id)
+      DO UPDATE SET display_currency = $2, updated_at = NOW()
+      RETURNING user_id, display_currency, updated_at
+    `;
+    const { rows } = await pool.query(query, [userId, data.display_currency]);
+    return rows[0];
   }
 }

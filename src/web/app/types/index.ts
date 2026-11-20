@@ -1,3 +1,5 @@
+import { Frequency } from '../lib/money';
+
 // Types for payment sources
 export interface PaymentSource {
   id: string;
@@ -8,28 +10,18 @@ export interface PaymentSource {
   created_at?: string;
 }
 
-// Types for recurring payments
+// Types for recurring payments.
+// payment_source_id and category are optional metadata.
 export interface RecurringPayment {
   id: string;
   user_id: string;
   name: string;
   amount: number;
   currency: string;
-  frequency: 'weekly' | 'monthly' | '4weeks' | 'yearly';
-  payment_source_id: string;
+  frequency: Frequency;
+  payment_source_id: string | null;
   start_date: string;
-  category: string;
+  category: string | null;
+  created_via?: string;
   created_at?: string;
-}
-
-// Type for a recurring payment with USD conversion
-export interface PaymentWithConversion extends RecurringPayment {
-  amountInUSD: number;
-}
-
-// Type for payment dates with reference to payment and source
-export interface PaymentDateItem {
-  date: Date;
-  payment: RecurringPayment;
-  paymentSource?: PaymentSource;
 }

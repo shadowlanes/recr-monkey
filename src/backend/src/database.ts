@@ -1,6 +1,12 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// DATE columns come back as plain 'YYYY-MM-DD' strings, not JS Dates
+// (a Date would serialize timezone-shifted and land a day off in the UI).
+types.setTypeParser(types.builtins.DATE, (value: string) => value);
+// NUMERIC columns come back as numbers, not strings.
+types.setTypeParser(types.builtins.NUMERIC, (value: string) => parseFloat(value));
 
 // Database configuration
 const dbConfig = {

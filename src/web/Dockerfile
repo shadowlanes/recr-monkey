@@ -8,12 +8,10 @@ RUN npm install
 
 COPY . .
 
-# Set dummy environment variables for build time
-# These will be overridden at runtime by docker-compose
-ARG NEXT_PUBLIC_SUPABASE_URL=http://placeholder
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001
+ARG NEXT_PUBLIC_DEV_AUTH=true
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_DEV_AUTH=$NEXT_PUBLIC_DEV_AUTH
 
 RUN npm run build
 

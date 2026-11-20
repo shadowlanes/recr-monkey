@@ -1,8 +1,40 @@
 // API configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Import types
 import { PaymentSource, RecurringPayment } from '../types';
+import { Rates } from './money';
+
+export interface UserPreferences {
+  user_id: string;
+  display_currency: string;
+  updated_at?: string;
+}
+
+// Personal API key for scripts and AI assistants. The secret itself is only
+// returned once, by createApiKey.
+export interface ApiKey {
+  id: string;
+  name: string;
+  scope: 'read' | 'write';
+  key_hint: string;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+// An OAuth client (an AI assistant) asking for, or holding, account access.
+export interface OAuthClientInfo {
+  client_id: string;
+  name: string;
+  redirect_host: string;
+  redirect_uri_valid: boolean;
+}
+
+export interface OAuthConnection {
+  client_id: string;
+  name: string;
+  connected_at: string;
+}
 
 // User type matching better-auth backend
 export interface User {
@@ -26,6 +58,10 @@ interface AuthResponse {
   token: string;
   user: User;
 }
+
+// Local-dev hack: when set, email sign-in/up go through the backend's dev-login
+// (accepts any credentials). Backend must have DEV_AUTH_BYPASS=true.
+const DEV_AUTH = process.env.NEXT_PUBLIC_DEV_AUTH === 'true';
 
 // Storage keys
 const USER_KEY = 'auth_user';
@@ -55,7 +91,7 @@ const storage = {
 export const api = {
   // Auth endpoints (better-auth)
   async signUp(email: string, password: string, name?: string): Promise<{ user: User }> {
-    const response = await fetch(`${API_URL}/api/auth/sign-up/email`, {
+    const response = await fetch(`${API_URL}/api/auth/${DEV_AUTH ? 'dev-login' : 'sign-up/email'}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Important: Include cookies for session
@@ -73,7 +109,7 @@ export const api = {
   },
 
   async signIn(email: string, password: string): Promise<{ user: User }> {
-    const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
+    const response = await fetch(`${API_URL}/api/auth/${DEV_AUTH ? 'dev-login' : 'sign-in/email'}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Important: Include cookies for session
@@ -90,6 +126,27 @@ export const api = {
     return { user: result.user };
   },
 
+  // Social sign-in (better-auth): returns a provider URL to redirect to
+  async signInWithGoogle(callbackURL: string): Promise<string> {
+    const response = await fetch(`${API_URL}/api/auth/sign-in/social`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ provider: 'google', callbackURL })
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Google sign-in is not available');
+    }
+
+    const result: { url?: string; redirect?: boolean } = await response.json();
+    if (!result.url) {
+      throw new Error('Google sign-in is not available');
+    }
+    return result.url;
+  },
+
   async signOut(): Promise<void> {
     await fetch(`${API_URL}/api/auth/sign-out`, {
       method: 'POST',
@@ -101,34 +158,28 @@ export const api = {
   },
 
   async getUser(): Promise<User | null> {
-    // First check local storage
-    const cachedUser = storage.getUser();
-    if (cachedUser) {
-      return cachedUser;
-    }
-    
-    // If no cached user, check session with server
+    // The server session is the source of truth. The cached user is only a
+    // fallback when the server is unreachable; a stale cache must never make
+    // the app look signed-in while the session cookie is gone or invalid.
     try {
       const response = await fetch(`${API_URL}/api/auth/get-session`, {
         method: 'GET',
         credentials: 'include'
       });
-      
-      if (!response.ok) {
-        return null;
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result?.user) {
+          storage.setUser(result.user);
+          return result.user;
+        }
       }
-      
-      const result = await response.json();
-      
-      if (result.user) {
-        storage.setUser(result.user);
-        return result.user;
-      }
+      storage.clear();
+      return null;
     } catch (error) {
       console.error('Error fetching user session:', error);
+      return storage.getUser();
     }
-    
-    return null;
   },
 
   // Get current stored user without API call
@@ -211,27 +262,14 @@ export const api = {
     return result.data || [];
   },
 
-  async checkRecurringPayments(): Promise<boolean> {
-    const response = await fetch(`${API_URL}/api/recurring-payments/check`, {
-      credentials: 'include'
-    });
-    const result: ApiResponse<RecurringPayment[]> = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
-    
-    return (result.data || []).length > 0;
-  },
-
   async createRecurringPayment(payment: {
     name: string;
     amount: number;
     currency: string;
     frequency: string;
-    payment_source_id: string;
+    payment_source_id: string | null;
     start_date: string;
-    category: string;
+    category: string | null;
   }): Promise<RecurringPayment> {
     const response = await fetch(`${API_URL}/api/recurring-payments`, {
       method: 'POST',
@@ -254,9 +292,9 @@ export const api = {
     amount: number;
     currency: string;
     frequency: string;
-    payment_source_id: string;
+    payment_source_id: string | null;
     start_date: string;
-    category: string;
+    category: string | null;
   }): Promise<RecurringPayment> {
     const response = await fetch(`${API_URL}/api/recurring-payments/${id}`, {
       method: 'PUT',
@@ -279,9 +317,150 @@ export const api = {
       method: 'DELETE',
       credentials: 'include'
     });
-    
+
     const result: ApiResponse<null> = await response.json();
-    
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  },
+
+  // Exchange rates (USD-based, cached server-side)
+  async getRates(): Promise<Rates> {
+    const response = await fetch(`${API_URL}/api/rates`);
+    const result: ApiResponse<Rates> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to load exchange rates');
+    }
+
+    return result.data;
+  },
+
+  // User preferences
+  async getPreferences(): Promise<UserPreferences> {
+    const response = await fetch(`${API_URL}/api/preferences`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<UserPreferences> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to load preferences');
+    }
+
+    return result.data;
+  },
+
+  async updatePreferences(prefs: { display_currency: string }): Promise<UserPreferences> {
+    const response = await fetch(`${API_URL}/api/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(prefs)
+    });
+    const result: ApiResponse<UserPreferences> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to update preferences');
+    }
+
+    return result.data;
+  },
+
+  // API keys (session-only on the backend)
+  async listApiKeys(): Promise<ApiKey[]> {
+    const response = await fetch(`${API_URL}/api/api-keys`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<ApiKey[]> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    return result.data || [];
+  },
+
+  async createApiKey(name: string, scope: ApiKey['scope']): Promise<ApiKey & { key: string }> {
+    const response = await fetch(`${API_URL}/api/api-keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, scope })
+    });
+    const result: ApiResponse<ApiKey & { key: string }> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to create API key');
+    }
+
+    return result.data;
+  },
+
+  async revokeApiKey(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/api-keys/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const result: ApiResponse<null> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  },
+
+  // OAuth consent and connected assistants (session-only on the backend)
+  async getOAuthClient(clientId: string, redirectUri: string): Promise<OAuthClientInfo> {
+    const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri });
+    const response = await fetch(`${API_URL}/api/oauth/client?${params}`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<OAuthClientInfo> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to load application');
+    }
+
+    return result.data;
+  },
+
+  // Returns a short-lived token that lets one authorize request through.
+  async grantOAuthConsent(clientId: string, redirectUri: string): Promise<string> {
+    const response = await fetch(`${API_URL}/api/oauth/consent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ client_id: clientId, redirect_uri: redirectUri })
+    });
+    const result: ApiResponse<{ consent: string }> = await response.json();
+
+    if (result.error || !result.data) {
+      throw new Error(result.error?.message || 'Failed to record consent');
+    }
+
+    return result.data.consent;
+  },
+
+  async listOAuthConnections(): Promise<OAuthConnection[]> {
+    const response = await fetch(`${API_URL}/api/oauth/connections`, {
+      credentials: 'include'
+    });
+    const result: ApiResponse<OAuthConnection[]> = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    return result.data || [];
+  },
+
+  async revokeOAuthConnection(clientId: string): Promise<void> {
+    const response = await fetch(
+      `${API_URL}/api/oauth/connections/${encodeURIComponent(clientId)}`,
+      { method: 'DELETE', credentials: 'include' }
+    );
+    const result: ApiResponse<null> = await response.json();
+
     if (result.error) {
       throw new Error(result.error.message);
     }
